@@ -19,4 +19,4 @@ socket.onopen = () => {
 
 socket.onerror = (error) => {
     console.error('⚠️ WebSocket error:', error);
-};
+}; 
