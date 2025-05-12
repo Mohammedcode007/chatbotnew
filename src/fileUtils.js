@@ -143,6 +143,26 @@ function isRoomBlocked(roomName) {
     const blockedRooms = loadBlockedRooms();
     return blockedRooms.includes(roomName);
 }
+function isUserMasterOrInMasterList(username, roomName) {
+    const rooms = loadRooms();
+    
+    // التحقق مما إذا كان المستخدم ماستر في الغرفة
+    const room = rooms.find(r => r.roomName === roomName);
+    if (room) {
+        // التحقق من أن المستخدم ماستر في الغرفة أو في قائمة الماستر
+        if (room.master === username || room.masterList.includes(username)) {
+            return true; // المستخدم ماستر في الغرفة أو في قائمة الماستر
+        }
+    }
+    
+    // إذا لم يكن في الغرفة، تحقق من قائمة الماستر العامة
+    const masterList = loadMasterList();
+    if (masterList.includes(username)) {
+        return true; // المستخدم موجود في قائمة الماستر العامة
+    }
+
+    return false; // إذا لم يكن في أي من القائمتين
+}
 
 
 module.exports = {
@@ -151,6 +171,6 @@ module.exports = {
     loadAdminList, saveAdminList, isUserInAdminList,
     loadUserVerifyList, saveUserVerifyList, isUserVerified,
     loadBlockedUsers, saveBlockedUsers, isUserBlocked,
-    loadBlockedRooms, saveBlockedRooms, isRoomBlocked
+    loadBlockedRooms, saveBlockedRooms, isRoomBlocked,isUserMasterOrInMasterList
 };
 

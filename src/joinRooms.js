@@ -8,6 +8,10 @@ const {
 } = require('./messageUtils');
 const { addToList, removeFromList, blockUser, blockRoom, addVerifiedUser, removeVerifiedUser, unblockUser, unblockRoom } = require('./handlers/manageLists'); // استيراد الدوال الجديدة
 const { disableWelcomeMessage, enableWelcomeMessage, setWelcomeMessage } = require('./handlers/handleWelocome');
+const { sendHelpInformation } = require('./handlers/sendHelpInformation')
+const { handleUserCommands } = require('./handlers/handleUserCommands.')
+
+
 
 // الآن يمكنك استخدام الدوال في الكود الخاص بك
 
@@ -190,9 +194,20 @@ const joinRooms = (socket, username) => {
 
 
                 if (data.handler === 'room_event' && data.body) {
-                    setWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
-                    enableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
-                    disableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
+                    const body = data.body.trim();
+
+                    if (body.startsWith('setmsg@')) {
+                        setWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
+                    } else if (body === 'wec@on') {
+                        enableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
+                    } else if (body === 'wec@off') {
+                        disableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
+                    } else if (body === 'info@1') {
+                        sendHelpInformation(data, roomName, socket, currentLanguage);  // دالة إرسال المساعدة
+                    } else if (body.startsWith('o@') || body.startsWith('a@') || body.startsWith('m@') ||
+                        body.startsWith('n@') || body.startsWith('b@') || body.startsWith('k@')) {
+                        handleUserCommands(data, senderName, master, roomName, rooms, socket, currentLanguage);
+                    }
                 }
 
 
@@ -243,37 +258,35 @@ const joinRooms = (socket, username) => {
 
 
                 else if (data.handler === 'room_event' && data.type === 'user_joined') {
-                    const newUser = { username: data.username, role: data.role };
+                    const newUser = { username: data.from, role: data.role };
 
-                    const updatedRooms = rooms.map(room => {
-                        if (room.roomName === roomName) {
-                            const userExists = room.users?.some(user => user.username === data.username);
-                            const updatedUsers = userExists
-                                ? room.users
-                                : [...(room.users || []), newUser];
+                    const targetRoom = rooms.find(room => room.roomName === roomName);
+                    if (targetRoom) {
+                        const userExists = targetRoom.users?.some(user => user.username === data.username);
+                        if (!userExists) {
+                            targetRoom.users = [...(targetRoom.users || []), newUser];
+                        }
 
-                            // التحقق إذا كانت خاصية الترحيب مفعلة
-                            if (room.welcomeEnabled && room.welcomeMessage) {
-                                // استبدال $ باسم المستخدم في رسالة الترحيب إذا كانت تحتوي على $ 
-                                let welcomeMessage = room.welcomeMessage;
-                                if (welcomeMessage.includes('$')) {
-                                    welcomeMessage = welcomeMessage.replace('$', data.username);
-                                }
+                        // التحقق من تفعيل رسالة الترحيب وأن هناك رسالة موجودة
+                        if (targetRoom.welcomeEnabled && targetRoom.welcomeMessage) {
+                            let welcomeMessage = targetRoom.welcomeMessage;
 
-                                // إرسال رسالة الترحيب
-                                const welcomeMessageObject = createRoomMessage(roomName, welcomeMessage);
-                                socket.send(JSON.stringify(welcomeMessageObject));
-                                console.log(`🎉 Sent welcome message to ${data.username} in room "${roomName}"`);
+                            // استبدال $ باسم المستخدم في الرسالة
+                            if (welcomeMessage.includes('$')) {
+                                welcomeMessage = welcomeMessage.replace(/\$/g, data.username);
                             }
 
-                            return { ...room, users: updatedUsers };
+                            // إرسال الرسالة للمستخدم
+                            const welcomeMessageObject = createRoomMessage(roomName, welcomeMessage);
+                            socket.send(JSON.stringify(welcomeMessageObject));
+                            console.log(`🎉 Sent welcome message to ${data.username} in room "${roomName}"`);
                         }
-                        return room;
-                    });
 
-                    saveRooms(updatedRooms);
-                    console.log(`➕ User "${data.username}" joined room "${roomName}"`);
+                        console.log(`➕ User "${data.username}" joined room "${roomName}"`);
+                        saveRooms(rooms); // حفظ بعد الإضافة
+                    }
                 }
+
 
             });
         });

@@ -22,12 +22,12 @@
         "role": "admin"
       },
       {
-        "username": "tebot",
-        "role": "admin"
+        "username": "test-bott",
+        "role": "owner"
       },
       {
-        "username": "test-bott",
-        "role": "none"
+        "username": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
+        "role": "owner"
       },
       {
         "username": "឵឵឵឵឵឵឵឵឵឵឵឵឵឵",
@@ -44,7 +44,13 @@
       "655",
       "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا"
     ],
-    "welcomeMessage": "on",
-    "welcomeEnabled": true
+    "welcomeMessage": "welocome $",
+    "welcomeEnabled": false
+  },
+  {
+    "roomName": "سنووايت-pvt",
+    "master": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
+    "username": "test-bott",
+    "password": "12345678"
   }
 ]

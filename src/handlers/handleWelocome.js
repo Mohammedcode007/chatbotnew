@@ -8,14 +8,11 @@ function disableWelcomeMessage(data, master, senderName, roomName, rooms, curren
         if (master === senderName) {
             console.log(`✅ Disabling welcome message for room: ${roomName}`);
 
-            // فقط تغيير حالة الترحيب دون تعديل رسالة الترحيب نفسها
-            const updatedRooms = rooms.map(r => {
-                if (r.roomName === roomName) {
-                    return { ...r, welcomeEnabled: false }; // إيقاف خاصية الترحيب
-                }
-                return r;
-            });
-
+            // تعديل مباشر على كائن الغرفة دون إنشاء نسخة جديدة
+            const targetRoom = rooms.find(r => r.roomName === roomName);
+            if (targetRoom) {
+                targetRoom.welcomeEnabled = false; // إيقاف خاصية الترحيب
+            }
 
             const confirmation = currentLanguage === 'ar'
                 ? `✅ تم إيقاف رسالة الترحيب للغرفة "${roomName}".`
@@ -24,7 +21,9 @@ function disableWelcomeMessage(data, master, senderName, roomName, rooms, curren
             const confirmMessage = createRoomMessage(roomName, confirmation);
             socket.send(JSON.stringify(confirmMessage));
             console.log('✅ Welcome message disabled.');
-            saveRooms(updatedRooms);
+
+            // حفظ التغييرات بعد التعديل المباشر
+            saveRooms(rooms);
 
         } else {
             const errorText = currentLanguage === 'ar'
@@ -44,15 +43,11 @@ function enableWelcomeMessage(data, master, senderName, roomName, rooms, current
         if (master === senderName) {
             console.log(`✅ Enabling welcome message for room: ${roomName}`);
 
-            // فقط تغيير حالة الترحيب دون تعديل رسالة الترحيب نفسها
-            const updatedRooms = rooms.map(r => {
-                if (r.roomName === roomName) {
-                    return { ...r, welcomeEnabled: true }; // تفعيل خاصية الترحيب
-                }
-                return r;
-            });
-
-            saveRooms(updatedRooms);
+            // تعديل مباشر على كائن الغرفة
+            const targetRoom = rooms.find(r => r.roomName === roomName);
+            if (targetRoom) {
+                targetRoom.welcomeEnabled = true; // تفعيل الترحيب دون تعديل الرسالة
+            }
 
             const confirmation = currentLanguage === 'ar'
                 ? `✅ تم تفعيل رسالة الترحيب للغرفة "${roomName}".`
@@ -61,6 +56,8 @@ function enableWelcomeMessage(data, master, senderName, roomName, rooms, current
             const confirmMessage = createRoomMessage(roomName, confirmation);
             socket.send(JSON.stringify(confirmMessage));
             console.log('✅ Welcome message enabled.');
+            saveRooms(rooms);
+
         } else {
             const errorText = currentLanguage === 'ar'
                 ? '❌ أنت لست ماستر الغرفة ولا يمكنك تفعيل رسالة الترحيب.'
@@ -73,33 +70,22 @@ function enableWelcomeMessage(data, master, senderName, roomName, rooms, current
     }
 }
 
+
 // دالة تعيين رسالة الترحيب
 function setWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket) {
     if (data.body.startsWith('setmsg@')) {
-        const message = data.body.split('@')[1]; // استخراج الرسالة بعد setmsg@
+        const message = data.body.split('@')[1];
 
         if (message) {
-            let welcomeMessage = message; // رسالة الترحيب من المستخدم
+            const welcomeMessage = message; // لا تستبدل $ هنا
 
-            // إذا كانت الرسالة تحتوي على $، نضيف اسم المستخدم
-            if (welcomeMessage.includes('$')) {
-                const username = data.username;  // اسم المستخدم المرسل
-                welcomeMessage = welcomeMessage.replace('$', username); // استبدال $ باسم المستخدم
-            }
-
-            // تحقق إذا كان المرسل هو ماستر الغرفة
             if (master === senderName) {
                 console.log(`📝 Setting welcome message in room: ${roomName}`);
 
-                // تحديث قائمة الغرف وحفظ الرسالة الجديدة
-                const updatedRooms = rooms.map(r => {
-                    if (r.roomName === roomName) {
-                        return { ...r, welcomeMessage }; // حفظ الرسالة في خاصية "welcomeMessage"
-                    }
-                    return r;
-                });
-
-                saveRooms(updatedRooms);
+                const targetRoom = rooms.find(r => r.roomName === roomName);
+                if (targetRoom) {
+                    targetRoom.welcomeMessage = welcomeMessage;
+                }
 
                 const confirmation = currentLanguage === 'ar'
                     ? `✅ تم تعيين رسالة الترحيب للغرفة "${roomName}".`
@@ -107,7 +93,9 @@ function setWelcomeMessage(data, master, senderName, roomName, rooms, currentLan
 
                 const confirmMessage = createRoomMessage(roomName, confirmation);
                 socket.send(JSON.stringify(confirmMessage));
-                console.log('✅ Welcome message saved and confirmation sent.');
+                console.log('✅ Welcome message saved in memory.');
+                saveRooms(rooms);
+
             } else {
                 const errorText = currentLanguage === 'ar'
                     ? '❌ أنت لست ماستر الغرفة ولا يمكنك تعيين رسالة ترحيب.'
@@ -120,6 +108,8 @@ function setWelcomeMessage(data, master, senderName, roomName, rooms, currentLan
         }
     }
 }
+
+
 
 
 module.exports = {
