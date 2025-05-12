@@ -1,87 +1,3 @@
-// const fs = require('fs');
-// const WebSocket = require('ws');
-// const roomsFilePath = './rooms.json';
-
-// const joinRooms = (socket, username) => {
-//     if (fs.existsSync(roomsFilePath)) {
-//         const roomsData = fs.readFileSync(roomsFilePath);
-//         const rooms = JSON.parse(roomsData);
-//         console.log('Rooms from JSON:', rooms);
-
-//         rooms.forEach((room) => {
-//             const { username, password, roomName } = room;
-
-//             // إرسال طلب تسجيل الدخول
-//             const loginMessage = {
-//                 handler: 'login',
-//                 username: username,
-//                 password: password,
-//                 session: 'PQodgiKBfujFZfvJTnmM',
-//                 sdk: '25',
-//                 ver: '332',
-//                 id: 'xOEVOVDfdSwVCjYqzmTT'
-//             };
-
-//             // إرسال رسالة تسجيل الدخول عبر WebSocket
-//             socket.send(JSON.stringify(loginMessage));
-//             console.log(`🔐 Login request sent for ${username}`);
-
-//             socket.onmessage = (event) => {
-//                 const data = JSON.parse(event.data);
-//                 console.log('📩 Message received:9', data);
-
-//                 if (data.handler === 'login_event' && data.type === 'success') {
-//                     console.log(`✅ Login successful for ${username}`);
-
-//                     // إرسال طلب الانضمام إلى الغرفة بعد نجاح تسجيل الدخول
-//                     const joinRoomMessage = {
-//                         handler: 'room_join',
-//                         id: 'QvyHpdnSQpEqJtVbHbFY', // استبدل بـ ID الغرفة الفعلي
-//                         name: roomName
-//                     };
-
-//                     socket.send(JSON.stringify(joinRoomMessage));
-//                     console.log(`✅ Auto joined room: ${roomName}`);
-//                 } else {
-//                     console.log(`❌ Login failed for ${username}`);
-//                 }
-
-//                 if (data.handler === 'room_event' && data.type === 'you_joined') {
-//                     const usersList = data.users || [];
-//                     const roomName = data.name;
-
-//                     const updatedUsers = usersList.map(user => ({
-//                         username: user.username,
-//                         role: user.role
-//                     }));
-
-//                     try {
-//                         const roomsData = fs.readFileSync(roomsFilePath, 'utf8');
-//                         const rooms = JSON.parse(roomsData);
-
-//                         // تحديث الغرفة التي تطابق اسم الغرفة
-//                         const updatedRooms = rooms.map(room => {
-//                             if (room.roomName === roomName) {
-//                                 return { ...room, users: updatedUsers }; // استبدال قائمة المستخدمين
-//                             }
-//                             return room;
-//                         });
-
-//                         fs.writeFileSync(roomsFilePath, JSON.stringify(updatedRooms, null, 2), 'utf8');
-//                         console.log(`✅ Users updated in room "${roomName}" in rooms.json`);
-//                     } catch (err) {
-//                         console.error('❌ Error updating rooms.json:', err);
-//                     }
-//                 }
-
-//             };
-//         });
-//     } else {
-//         console.log('⚠️ No rooms.json found.');
-//     }
-// };
-
-// module.exports = joinRooms;
 
 
 const { loadRooms, saveRooms, saveUserLanguage } = require('./fileUtils');
@@ -91,6 +7,9 @@ const {
     createRoomMessage
 } = require('./messageUtils');
 const { addToList, removeFromList, blockUser, blockRoom, addVerifiedUser, removeVerifiedUser, unblockUser, unblockRoom } = require('./handlers/manageLists'); // استيراد الدوال الجديدة
+const { disableWelcomeMessage, enableWelcomeMessage, setWelcomeMessage } = require('./handlers/handleWelocome');
+
+// الآن يمكنك استخدام الدوال في الكود الخاص بك
 
 const joinRooms = (socket, username) => {
 
@@ -215,7 +134,6 @@ const joinRooms = (socket, username) => {
                 }
 
 
-                // التحقق إذا كانت الكلمة هي "removemas@username" لحذف المستخدم من "masterList"
                 if (data.handler === 'room_event' && data.body && data.body.startsWith('removemas@')) {
                     const targetUsername = data.body.split('@')[1]; // الحصول على اسم المستخدم بعد removemas@
 
@@ -271,6 +189,14 @@ const joinRooms = (socket, username) => {
                 }
 
 
+                if (data.handler === 'room_event' && data.body) {
+                    setWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
+                    enableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
+                    disableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
+                }
+
+
+
 
 
                 if (data.handler === 'room_event' && data.type === 'you_joined') {
@@ -291,6 +217,64 @@ const joinRooms = (socket, username) => {
                     saveRooms(updatedRooms); // حفظ التحديثات في ملف الغرف
                     console.log(`✅ Users updated in room "${roomName}" in rooms.json`);
                 }
+                else if (data.handler === 'room_event' && data.type === 'user_left') {
+                    const usernameLeft = data.username;
+
+                    // تحديث قائمة الغرف بدون التأثير على باقي الخصائص
+                    const updatedRooms = rooms.map(room => {
+                        if (room.roomName === roomName) {
+                            // تحديث قائمة المستخدمين بعد إزالة المستخدم الذي غادر
+                            const filteredUsers = room.users?.filter(user => user.username !== usernameLeft) || [];
+
+                            // إعادة الغرفة مع تحديث قائمة المستخدمين فقط
+                            return {
+                                ...room,
+                                users: filteredUsers // الحفاظ على باقي الخصائص كما هي
+                            };
+                        }
+                        return room;
+                    });
+
+                    saveRooms(updatedRooms);
+                    console.log(`🛑 User "${usernameLeft}" removed from room "${roomName}"`);
+                }
+
+
+
+
+                else if (data.handler === 'room_event' && data.type === 'user_joined') {
+                    const newUser = { username: data.username, role: data.role };
+
+                    const updatedRooms = rooms.map(room => {
+                        if (room.roomName === roomName) {
+                            const userExists = room.users?.some(user => user.username === data.username);
+                            const updatedUsers = userExists
+                                ? room.users
+                                : [...(room.users || []), newUser];
+
+                            // التحقق إذا كانت خاصية الترحيب مفعلة
+                            if (room.welcomeEnabled && room.welcomeMessage) {
+                                // استبدال $ باسم المستخدم في رسالة الترحيب إذا كانت تحتوي على $ 
+                                let welcomeMessage = room.welcomeMessage;
+                                if (welcomeMessage.includes('$')) {
+                                    welcomeMessage = welcomeMessage.replace('$', data.username);
+                                }
+
+                                // إرسال رسالة الترحيب
+                                const welcomeMessageObject = createRoomMessage(roomName, welcomeMessage);
+                                socket.send(JSON.stringify(welcomeMessageObject));
+                                console.log(`🎉 Sent welcome message to ${data.username} in room "${roomName}"`);
+                            }
+
+                            return { ...room, users: updatedUsers };
+                        }
+                        return room;
+                    });
+
+                    saveRooms(updatedRooms);
+                    console.log(`➕ User "${data.username}" joined room "${roomName}"`);
+                }
+
             });
         });
     } else {
