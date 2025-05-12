@@ -1,4 +1,4 @@
 {
-    "ignore": ["rooms.json"]
+  "ignore": ["rooms.json", "src/data"]
   }
   

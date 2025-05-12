@@ -57,5 +57,100 @@ function getUserLanguage(username) {
     }
 }
 
+// دوال التعامل مع ملفات المستخدمين والبيانات الأخرى (master, admin, userverify, blocked)
+function loadMasterList() {
+    if (fs.existsSync(masterListPath)) {
+        const data = fs.readFileSync(masterListPath);
+        return JSON.parse(data);
+    }
+    return [];
+}
 
-module.exports = { loadRooms, saveRooms, roomExists, addRoom ,saveUserLanguage,loadUserLanguage,getUserLanguage};
+function saveMasterList(masterList) {
+    fs.writeFileSync(masterListPath, JSON.stringify(masterList, null, 2));
+}
+
+function loadAdminList() {
+    if (fs.existsSync(adminListPath)) {
+        const data = fs.readFileSync(adminListPath);
+        return JSON.parse(data);
+    }
+    return [];
+}
+
+function saveAdminList(adminList) {
+    fs.writeFileSync(adminListPath, JSON.stringify(adminList, null, 2));
+}
+
+function loadUserVerifyList() {
+    if (fs.existsSync(userVerifyListPath)) {
+        const data = fs.readFileSync(userVerifyListPath);
+        return JSON.parse(data);
+    }
+    return [];
+}
+
+function saveUserVerifyList(userVerifyList) {
+    fs.writeFileSync(userVerifyListPath, JSON.stringify(userVerifyList, null, 2));
+}
+
+function loadBlockedUsers() {
+    if (fs.existsSync(blockedUsersPath)) {
+        const data = fs.readFileSync(blockedUsersPath);
+        return JSON.parse(data);
+    }
+    return [];
+}
+
+function saveBlockedUsers(blockedUsers) {
+    fs.writeFileSync(blockedUsersPath, JSON.stringify(blockedUsers, null, 2));
+}
+
+function loadBlockedRooms() {
+    if (fs.existsSync(blockedRoomsPath)) {
+        const data = fs.readFileSync(blockedRoomsPath);
+        return JSON.parse(data);
+    }
+    return [];
+}
+
+function saveBlockedRooms(blockedRooms) {
+    fs.writeFileSync(blockedRoomsPath, JSON.stringify(blockedRooms, null, 2));
+}
+
+// دوال للتحقق من وجود المستخدمين أو الغرف في القوائم
+function isUserInMasterList(username) {
+    const masterList = loadMasterList();
+    return masterList.includes(username);
+}
+
+function isUserInAdminList(username) {
+    const adminList = loadAdminList();
+    return adminList.includes(username);
+}
+
+function isUserVerified(username) {
+    const userVerifyList = loadUserVerifyList();
+    return userVerifyList.includes(username);
+}
+
+function isUserBlocked(username) {
+    const blockedUsers = loadBlockedUsers();
+    return blockedUsers.includes(username);
+}
+
+function isRoomBlocked(roomName) {
+    const blockedRooms = loadBlockedRooms();
+    return blockedRooms.includes(roomName);
+}
+
+
+module.exports = {
+    loadRooms, saveRooms, roomExists, addRoom, saveUserLanguage, loadUserLanguage, getUserLanguage,
+    loadMasterList, saveMasterList, isUserInMasterList,
+    loadAdminList, saveAdminList, isUserInAdminList,
+    loadUserVerifyList, saveUserVerifyList, isUserVerified,
+    loadBlockedUsers, saveBlockedUsers, isUserBlocked,
+    loadBlockedRooms, saveBlockedRooms, isRoomBlocked
+};
+

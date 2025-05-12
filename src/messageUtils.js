@@ -120,11 +120,24 @@ const createLanguageChangeMessage = (username, newLanguage) => {
 };
 
 
+const createRoomMessage = (roomName, body) => {
+    return {
+        handler: 'room_message',
+        id: 'TclBVHgBzPGTMRTNpgWV', // يمكن استخدام ثابت مثل MESSAGE_ID
+        room: roomName,
+        type: 'text',
+        body,
+        url: '',
+        length: ''
+    };
+};
+
 module.exports = {
     createChatMessage,
     createLoginMessage,
     createJoinRoomMessage,
     createErrorMessage,
     createInfoMessage,
-    createLanguageChangeMessage
+    createLanguageChangeMessage,
+    createRoomMessage
 };
