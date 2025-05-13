@@ -5,10 +5,12 @@ const handleLoginCommand = require('./handlers/handleLoginCommand');
 const handleJoinCommand = require('./handlers/handleJoinCommand');
 const handleInfoCommand = require('./handlers/handleInfoCommand');
 const handleLanguageCommand = require('./handlers/handleLanguageCommand');
-const { addToList, removeFromList, blockUser, blockRoom, addVerifiedUser, removeVerifiedUser,unblockUser,unblockRoom } = require('./handlers/manageLists'); // استيراد الدوال الجديدة
+const { addToList, removeFromList, blockUser, blockRoom, addVerifiedUser, removeVerifiedUser, unblockUser, unblockRoom } = require('./handlers/manageLists'); // استيراد الدوال الجديدة
 const {
     createRoomMessage
 } = require('./messageUtils');
+
+
 const loginToSocket = ({ username, password, joinRoom }) => {
     const socket = new WebSocket(WEBSOCKET_URL);
 
@@ -110,6 +112,9 @@ const loginToSocket = ({ username, password, joinRoom }) => {
                 const targetUsername = body.split('@')[1];
                 removeVerifiedUser(targetUsername, socket, data.from);
             }
+
+       
+
 
         }
     };

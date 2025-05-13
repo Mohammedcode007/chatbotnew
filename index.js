@@ -1,7 +1,7 @@
 // index.js
 const WebSocket = require('ws'); // استيراد مكتبة WebSocket
 const loginToSocket = require('./src/LoginSocket');
-const joinRooms = require('./src/joinRooms'); // استيراد دالة joinRooms
+const {joinRooms} = require('./src/joinRooms'); // استيراد دالة joinRooms
 
 loginToSocket({
     username: 'test-bott',

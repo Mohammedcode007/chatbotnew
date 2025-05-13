@@ -35,22 +35,70 @@
       },
       {
         "username": "⎀",
-        "role": "member"
+        "role": "owner"
       }
     ],
     "masterList": [
       "566",
       "677",
       "655",
-      "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا"
+      "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
+      "234566",
+      "2",
+      "3",
+      "4",
+      "7",
+      "9",
+      "33",
+      "34567",
+      "567"
     ],
-    "welcomeMessage": "welocome $",
-    "welcomeEnabled": false
+    "welcomeMessage": "tttt",
+    "welcomeEnabled": true
   },
   {
     "roomName": "سنووايت-pvt",
     "master": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
     "username": "test-bott",
-    "password": "12345678"
+    "password": "12345678",
+    "welcomeEnabled": true,
+    "masterList": [
+      "234566",
+      "6666",
+      "1234567890"
+    ],
+    "users": [
+      {
+        "username": ".sokkar.",
+        "role": "owner"
+      },
+      {
+        "username": "tebot",
+        "role": "owner"
+      },
+      {
+        "username": "test-bott",
+        "role": "owner"
+      },
+      {
+        "username": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
+        "role": "owner"
+      }
+    ],
+    "welcomeMessage": "welcome"
+  },
+  {
+    "roomName": "happy",
+    "master": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
+    "username": "test-bott",
+    "password": "12345678",
+    "welcomeMessage": "347",
+    "welcomeEnabled": true,
+    "users": [
+      {
+        "username": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
+        "role": "none"
+      }
+    ]
   }
 ]

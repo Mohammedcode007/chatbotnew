@@ -1,299 +1,237 @@
 
 
-const { loadRooms, saveRooms, saveUserLanguage } = require('./fileUtils');
 const WebSocket = require('ws');
-const { getUserLanguage } = require('./fileUtils'); // ✅ استيراد دالة اللغة
-const {
-    createRoomMessage
-} = require('./messageUtils');
+const path = require('path');
+const { loadRooms, saveRooms } = require('./fileUtils'); // تأكد من وجود دالة loadRooms و saveRooms
+const { createRoomMessage } = require('./messageUtils'); // تأكد من وجود دالة createRoomMessage
 const { addToList, removeFromList, blockUser, blockRoom, addVerifiedUser, removeVerifiedUser, unblockUser, unblockRoom } = require('./handlers/manageLists'); // استيراد الدوال الجديدة
 const { disableWelcomeMessage, enableWelcomeMessage, setWelcomeMessage } = require('./handlers/handleWelocome');
 const { sendHelpInformation } = require('./handlers/sendHelpInformation')
 const { handleUserCommands } = require('./handlers/handleUserCommands.')
+const { getUserLanguage } = require('./fileUtils'); // ✅ استيراد دالة اللغة
 
+function joinRooms() {
+    const rooms = loadRooms(path.join(__dirname, 'rooms.json'));
 
+    rooms.forEach(room => {
+        const socket = new WebSocket('wss://chatp.net:5333/server');
+        const { master, users } = room;
 
-// الآن يمكنك استخدام الدوال في الكود الخاص بك
+        // حفظ معلومات الغرفة في الـ socket
+        socket.roomInfo = room;
+        socket._processedAddMas = new Set(); // لتجنب التكرار في التعامل مع addmas@
 
-const joinRooms = (socket, username) => {
-
-    const rooms = loadRooms(); // استخدام الدالة لتحميل الغرف
-
-    if (rooms.length > 0) {
-        console.log('Rooms from JSON:', rooms);
-
-        rooms.forEach((room) => {
-            const { username: roomUsername, password, roomName } = room;
-            const { master, users } = room;
-
+        socket.on('open', () => {
             // إرسال طلب تسجيل الدخول
             const loginMessage = {
                 handler: 'login',
-                username: roomUsername,
-                password: password,
+                username: room.username,
+                password: room.password,
                 session: 'PQodgiKBfujFZfvJTnmM',
                 sdk: '25',
                 ver: '332',
                 id: 'xOEVOVDfdSwVCjYqzmTT'
             };
-
-            // إرسال رسالة تسجيل الدخول عبر WebSocket
             socket.send(JSON.stringify(loginMessage));
-            console.log(`🔐 Login request sent for ${roomUsername}`);
+            console.log(`🔐 Login sent for ${room.username}`);
+        });
 
-            socket.on('message', (event) => {
-                const data = JSON.parse(event);
-                console.log('📩 Message received:', data);
-                let senderName = data.from
-                const currentLanguage = getUserLanguage(senderName) || 'en'; // الحصول على لغة المستخدم الحالية
+        socket.on('message', (event) => {
+            const data = JSON.parse(event);
+            let senderName = data.from
+            let roomName = data.room
+            const currentLanguage = getUserLanguage(senderName) || 'en'; // الحصول على لغة المستخدم الحالية
 
-                if (data.handler === 'login_event' && data.type === 'success') {
-                    console.log(`✅ Login successful for ${roomUsername}`);
+            // ✅ عند تسجيل الدخول بنجاح، قم بالانضمام إلى الغرفة
+            if (data.handler === 'login_event' && data.type === 'success') {
+                // الانضمام للغرفة باستخدام الـ roomName الخاص بكل غرفة
+                const joinRoomMessage = {
+                    handler: 'room_join',
+                    id: 'QvyHpdnSQpEqJtVbHbFY', // أو يمكن تغيير هذا إلى المعرف الصحيح للغرفة
+                    name: room.roomName // استخدم اسم الغرفة الموجود في الـ room
+                };
+                socket.send(JSON.stringify(joinRoomMessage));
+                console.log(`🚪 Sent join request to room: ${room.roomName}`);
+                return;
+            }
 
-                    // إرسال طلب الانضمام إلى الغرفة بعد نجاح تسجيل الدخول
-                    const joinRoomMessage = {
-                        handler: 'room_join',
-                        id: 'QvyHpdnSQpEqJtVbHbFY', // استبدل بـ ID الغرفة الفعلي
-                        name: roomName
-                    };
-
-                    socket.send(JSON.stringify(joinRoomMessage));
-                    console.log(`✅ Auto joined room: ${roomName}`);
+            // التعامل مع أوامر إضافية مثل addmas@
+            if (data.handler === 'room_event' && data.body && data.body.startsWith('addmas@')) {
+                const targetUsername = data.body.split('@')[1];  // الحصول على اسم المستخدم بعد addmas@
+                if (master === senderName) {
+                    console.log(`🔄 Adding ${targetUsername} to master list in room: ${data.room}`);
+                    const targetRoomIndex = rooms.findIndex(room => room.roomName === data.room);
+                    if (targetRoomIndex !== -1) {
+                        const targetRoom = rooms[targetRoomIndex];
+                        if (!targetRoom.masterList) {
+                            targetRoom.masterList = [];
+                        }
+                        if (!targetRoom.masterList.includes(targetUsername)) {
+                            targetRoom.masterList.push(targetUsername);
+                            console.log(`✅ Added ${targetUsername} to masterList in room "${data.room}"`);
+                            const message = currentLanguage === 'ar'
+                                ? `✅ تم إضافة ${targetUsername} إلى قائمة الماستر في الغرفة "${data.room}".`
+                                : `✅ ${targetUsername} has been added to the master list in room "${data.room}".`;
+                            const confirmationMessage = createRoomMessage(data.room, message);
+                            socket.send(JSON.stringify(confirmationMessage));
+                        } else {
+                            const warningMessage = currentLanguage === 'ar'
+                                ? `❌ ${targetUsername} موجود بالفعل في قائمة الماستر.`
+                                : `❌ ${targetUsername} is already in the master list.`;
+                            const errorMessage = createRoomMessage(data.room, warningMessage);
+                            socket.send(JSON.stringify(errorMessage));
+                        }
+                    }
+                    saveRooms(rooms);
                 } else {
-                    console.log(`❌ Login failed for ${roomUsername}`);
+                    const warningMessage = currentLanguage === 'ar'
+                        ? '❌ أنت لست ماستر الغرفة ولا يمكنك إضافة المستخدمين إلى قائمة الماستر.'
+                        : '❌ You are not the master of the room and cannot add users to the master list.';
+                    const errorMessage = createRoomMessage(data.room, warningMessage);
+                    socket.send(JSON.stringify(errorMessage));
                 }
-
-                if (data.handler === 'room_event' && data.body && data.body.startsWith('ver@')) {
-                    const targetUsername = data.body.split('@')[1];
-                    let RoomName = data.room
-                    addVerifiedUser(targetUsername, socket, data.from, RoomName);
-                }
-
-                // ✅ إزالة التوثيق من مستخدم
-                if (data.handler === 'room_event' && data.body && data.body.startsWith('unver@')) {
-                    let RoomName = data.room
-
-                    const targetUsername = data.body.split('@')[1];
-                    removeVerifiedUser(targetUsername, socket, data.from, RoomName);
-                }                // التحقق إذا كانت الكلمة هي "addmas@username"
-                if (data.handler === 'room_event' && data.body && data.body.startsWith('addmas@')) {
-                    const targetUsername = data.body.split('@')[1]; // الحصول على اسم المستخدم بعد addmas@
-
-                    // التحقق إذا كان الشخص الذي يرسل الرسالة هو ماستر الغرفة
-                    if (master === senderName) {
-                        console.log(`🔄 Adding ${targetUsername} to master list in room: ${roomName}`);
-
-                        // إضافة المستخدم إلى "masterList" الخاصة بالغرفة فقط إذا لم يكن موجودًا
-                        const updatedRooms = rooms.map(r => {
-                            if (r.roomName === roomName) {
-                                // إذا لم تكن هناك خاصية masterList، قم بإنشائها
-                                if (!r.masterList) {
-                                    r.masterList = []; // قائمة الماستر
-                                }
-
-                                // تحقق من أن المستخدم ليس موجودًا في "masterList" قبل إضافته
-                                if (!r.masterList.includes(targetUsername)) {
-                                    r.masterList.push(targetUsername);
-                                    console.log(`✅ Added ${targetUsername} to masterList in room "${roomName}"`);
-
-                                    // إرسال رسالة تأكيد للمستخدم باستخدام createRoomMessage
+            }
+            if (data.handler === 'room_event' && data.body && data.body.startsWith('removemas@')) {
+                const targetUsername = data.body.split('@')[1];
+                if (master === senderName) {
+                    console.log(`🔄 Removing ${targetUsername} from master list in room: ${roomName}`);
+                    const updatedRooms = rooms.map(r => {
+                        if (r.roomName === roomName) {
+                            if (r.masterList) {
+                                if (r.masterList.includes(targetUsername)) {
+                                    r.masterList = r.masterList.filter(user => user !== targetUsername);
+                                    console.log(`✅ Removed ${targetUsername} from masterList in room "${roomName}"`);
                                     const message = currentLanguage === 'ar'
-                                        ? `✅ تم إضافة ${targetUsername} إلى قائمة الماستر في الغرفة "${roomName}".`
-                                        : `✅ ${targetUsername} has been added to the master list in room "${roomName}".`;
-
-                                    // لوج للتحقق من الرسالة
-                                    console.log('Confirmation Message:', message);
-
+                                        ? `✅ تم إزالة ${targetUsername} من قائمة الماستر في الغرفة "${roomName}".`
+                                        : `✅ ${targetUsername} has been removed from the master list in room "${roomName}".`;
                                     const confirmationMessage = createRoomMessage(roomName, message);
-                                    console.log('Sending Confirmation Message:', confirmationMessage); // لوج لرسالة التأكيد
                                     socket.send(JSON.stringify(confirmationMessage));
                                 } else {
-                                    console.log(`❌ ${targetUsername} is already in the master list.`);
-
-                                    // إرسال رسالة تحذيرية إذا كان المستخدم موجودًا بالفعل في القائمة
                                     const warningMessage = currentLanguage === 'ar'
-                                        ? `❌ ${targetUsername} موجود بالفعل في قائمة الماستر.`
-                                        : `❌ ${targetUsername} is already in the master list.`;
-
+                                        ? `❌ ${targetUsername} غير موجود في قائمة الماستر.`
+                                        : `❌ ${targetUsername} is not in the master list.`;
                                     const errorMessage = createRoomMessage(roomName, warningMessage);
-                                    console.log('Sending Warning Message:', errorMessage); // لوج لرسالة التحذير
                                     socket.send(JSON.stringify(errorMessage));
                                 }
                             }
-                            return r;
-                        });
-
-                        saveRooms(updatedRooms); // حفظ التحديثات في ملف الغرف
-                    } else {
-                        console.log(`❌ You are not the master of the room and cannot add users to the master list.`);
-
-                        // إرسال رسالة تحذيرية باستخدام createRoomMessage
-                        const warningMessage = currentLanguage === 'ar'
-                            ? '❌ أنت لست ماستر الغرفة ولا يمكنك إضافة المستخدمين إلى قائمة الماستر.'
-                            : '❌ You are not the master of the room and cannot add users to the master list.';
-
-                        const errorMessage = createRoomMessage(roomName, warningMessage);
-                        socket.send(JSON.stringify(errorMessage));
-                    }
-                }
-
-
-                if (data.handler === 'room_event' && data.body && data.body.startsWith('removemas@')) {
-                    const targetUsername = data.body.split('@')[1]; // الحصول على اسم المستخدم بعد removemas@
-
-                    // التحقق إذا كان الشخص الذي يرسل الرسالة هو ماستر الغرفة
-                    if (master === senderName) {
-                        console.log(`🔄 Removing ${targetUsername} from master list in room: ${roomName}`);
-
-                        // حذف المستخدم من "masterList" فقط إذا كان موجودًا
-                        const updatedRooms = rooms.map(r => {
-                            if (r.roomName === roomName) {
-                                // إذا كانت هناك خاصية masterList، قم بإزالتها
-                                if (r.masterList) {
-                                    // تحقق من وجود المستخدم في "masterList" قبل الحذف
-                                    if (r.masterList.includes(targetUsername)) {
-                                        r.masterList = r.masterList.filter(user => user !== targetUsername);
-                                        console.log(`✅ Removed ${targetUsername} from masterList in room "${roomName}"`);
-
-                                        // إرسال رسالة تأكيد باستخدام createRoomMessage
-                                        const message = currentLanguage === 'ar'
-                                            ? `✅ تم إزالة ${targetUsername} من قائمة الماستر في الغرفة "${roomName}".`
-                                            : `✅ ${targetUsername} has been removed from the master list in room "${roomName}".`;
-
-                                        const confirmationMessage = createRoomMessage(roomName, message);
-                                        socket.send(JSON.stringify(confirmationMessage));
-                                    } else {
-                                        console.log(`❌ ${targetUsername} is not in the master list.`);
-
-                                        // إرسال رسالة تحذيرية إذا كان المستخدم غير موجود في القائمة
-                                        const warningMessage = currentLanguage === 'ar'
-                                            ? `❌ ${targetUsername} غير موجود في قائمة الماستر.`
-                                            : `❌ ${targetUsername} is not in the master list.`;
-
-                                        const errorMessage = createRoomMessage(roomName, warningMessage);
-                                        socket.send(JSON.stringify(errorMessage));
-                                    }
-                                }
-                            }
-                            return r;
-                        });
-
-                        saveRooms(updatedRooms); // حفظ التحديثات في ملف الغرف
-                    } else {
-                        console.log(`❌ You are not the master of the room and cannot remove users from the master list.`);
-
-                        // إرسال رسالة تحذيرية باستخدام createRoomMessage
-                        const warningMessage = currentLanguage === 'ar'
-                            ? '❌ أنت لست ماستر الغرفة ولا يمكنك إزالة المستخدمين من قائمة الماستر.'
-                            : '❌ You are not the master of the room and cannot remove users from the master list.';
-
-                        const errorMessage = createRoomMessage(roomName, warningMessage);
-                        socket.send(JSON.stringify(errorMessage));
-                    }
-                }
-
-
-                if (data.handler === 'room_event' && data.body) {
-                    const body = data.body.trim();
-
-                    if (body.startsWith('setmsg@')) {
-                        setWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
-                    } else if (body === 'wec@on') {
-                        enableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
-                    } else if (body === 'wec@off') {
-                        disableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
-                    } else if (body === 'info@1') {
-                        sendHelpInformation(data, roomName, socket, currentLanguage);  // دالة إرسال المساعدة
-                    } else if (body.startsWith('o@') || body.startsWith('a@') || body.startsWith('m@') ||
-                        body.startsWith('n@') || body.startsWith('b@') || body.startsWith('k@')) {
-                        handleUserCommands(data, senderName, master, roomName, rooms, socket, currentLanguage);
-                    }
-                }
-
-
-
-
-
-                if (data.handler === 'room_event' && data.type === 'you_joined') {
-                    const usersList = data.users || [];
-                    const updatedUsers = usersList.map(user => ({
-                        username: user.username,
-                        role: user.role
-                    }));
-
-                    // تحديث الغرفة التي تطابق اسم الغرفة
-                    const updatedRooms = rooms.map(room => {
-                        if (room.roomName === roomName) {
-                            return { ...room, users: updatedUsers }; // استبدال قائمة المستخدمين
                         }
-                        return room;
+                        return r;
                     });
-
-                    saveRooms(updatedRooms); // حفظ التحديثات في ملف الغرف
-                    console.log(`✅ Users updated in room "${roomName}" in rooms.json`);
-                }
-                else if (data.handler === 'room_event' && data.type === 'user_left') {
-                    const usernameLeft = data.username;
-
-                    // تحديث قائمة الغرف بدون التأثير على باقي الخصائص
-                    const updatedRooms = rooms.map(room => {
-                        if (room.roomName === roomName) {
-                            // تحديث قائمة المستخدمين بعد إزالة المستخدم الذي غادر
-                            const filteredUsers = room.users?.filter(user => user.username !== usernameLeft) || [];
-
-                            // إعادة الغرفة مع تحديث قائمة المستخدمين فقط
-                            return {
-                                ...room,
-                                users: filteredUsers // الحفاظ على باقي الخصائص كما هي
-                            };
-                        }
-                        return room;
-                    });
-
                     saveRooms(updatedRooms);
-                    console.log(`🛑 User "${usernameLeft}" removed from room "${roomName}"`);
+                } else {
+                    const warningMessage = currentLanguage === 'ar'
+                        ? '❌ أنت لست ماستر الغرفة ولا يمكنك إزالة المستخدمين من قائمة الماستر.'
+                        : '❌ You are not the master of the room and cannot remove users from the master list.';
+                    const errorMessage = createRoomMessage(roomName, warningMessage);
+                    socket.send(JSON.stringify(errorMessage));
                 }
+            }
 
+            if (data.handler === 'room_event' && data.body && data.body.startsWith('ver@')) {
+                const targetUsername = data.body.split('@')[1];
+                let RoomName = data.room;
+                addVerifiedUser(targetUsername, socket, data.from, RoomName);
+            }
+            if (data.handler === 'room_event' && data.body && data.body.startsWith('unver@')) {
+                let RoomName = data.room;
+                const targetUsername = data.body.split('@')[1];
+                removeVerifiedUser(targetUsername, socket, data.from, RoomName);
+            }
+            if (data.handler === 'room_event' && data.body) {
+                const body = data.body.trim();
 
+                if (body.startsWith('setmsg@')) {
+                    setWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
+                } else if (body === 'wec@on') {
+                    enableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
+                } else if (body === 'wec@off') {
+                    disableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
+                } else if (body === 'info@1') {
+                    sendHelpInformation(data, roomName, socket, currentLanguage);
+                } else if (
+                    body.startsWith('o@') || body.startsWith('owner@') ||
+                    body.startsWith('a@') ||
+                    body.startsWith('m@') || body.startsWith('member@') ||
+                    body.startsWith('n@') || body.startsWith('none@') ||
+                    body.startsWith('b@') || body.startsWith('ban@') ||
+                    body.startsWith('k@') || body.startsWith('kick@')
+                ) {
+                    handleUserCommands(data, senderName, master, roomName, rooms, socket, currentLanguage);
+                }
+            }
+            if (data.handler === 'room_event' && data.type === 'you_joined') {
+                const roomName = data.name; // إضافة هذا السطر إذا كنت بحاجة إلى تعريف roomName
 
+                const usersList = data.users || [];
+                const updatedUsers = usersList.map(user => ({
+                    username: user.username,
+                    role: user.role
+                }));
 
-                else if (data.handler === 'room_event' && data.type === 'user_joined') {
-                    const newUser = { username: data.from, role: data.role };
-
-                    const targetRoom = rooms.find(room => room.roomName === roomName);
-                    if (targetRoom) {
-                        const userExists = targetRoom.users?.some(user => user.username === data.username);
-                        if (!userExists) {
-                            targetRoom.users = [...(targetRoom.users || []), newUser];
-                        }
-
-                        // التحقق من تفعيل رسالة الترحيب وأن هناك رسالة موجودة
-                        if (targetRoom.welcomeEnabled && targetRoom.welcomeMessage) {
-                            let welcomeMessage = targetRoom.welcomeMessage;
-
-                            // استبدال $ باسم المستخدم في الرسالة
-                            if (welcomeMessage.includes('$')) {
-                                welcomeMessage = welcomeMessage.replace(/\$/g, data.username);
-                            }
-
-                            // إرسال الرسالة للمستخدم
-                            const welcomeMessageObject = createRoomMessage(roomName, welcomeMessage);
-                            socket.send(JSON.stringify(welcomeMessageObject));
-                            console.log(`🎉 Sent welcome message to ${data.username} in room "${roomName}"`);
-                        }
-
-                        console.log(`➕ User "${data.username}" joined room "${roomName}"`);
-                        saveRooms(rooms); // حفظ بعد الإضافة
+                const updatedRooms = rooms.map(room => {
+                    if (room.roomName === roomName) {
+                        return { ...room, users: updatedUsers };
                     }
+                    return room;
+                });
+
+                saveRooms(updatedRooms);
+                console.log(`✅ Users updated in room "${roomName}" in rooms.json`);
+            } else if (data.handler === 'room_event' && data.type === 'user_left') {
+                const roomName = data.name; // إضافة هذا السطر إذا كنت بحاجة إلى تعريف roomName
+
+                const usernameLeft = data.username;
+
+                const updatedRooms = rooms.map(room => {
+                    if (room.roomName === roomName) {
+                        const filteredUsers = room.users?.filter(user => user.username !== usernameLeft) || [];
+                        return { ...room, users: filteredUsers };
+                    }
+                    return room;
+                });
+
+                saveRooms(updatedRooms);
+                console.log(`🛑 User "${usernameLeft}" removed from room "${roomName}"`);
+            } else if (data.handler === 'room_event' && data.type === 'user_joined') {
+                const roomName = data.name; // إضافة هذا السطر إذا كنت بحاجة إلى تعريف roomName
+                console.log(data, '789798798798');
+
+                const newUser = { username: data.username, role: data.role };
+                const targetRoom = rooms.find(room => room.roomName === roomName);
+                if (targetRoom) {
+                    const userExists = targetRoom.users?.some(user => user.username === data.username);
+                    if (!userExists) {
+                        targetRoom.users = [...(targetRoom.users || []), newUser];
+                    }
+
+                    if (targetRoom.welcomeEnabled && targetRoom.welcomeMessage) {
+                        let welcomeMessage = targetRoom.welcomeMessage;
+                        if (welcomeMessage.includes('$')) {
+                            welcomeMessage = welcomeMessage.replace(/\$/g, data.username);
+                        }
+
+                        const welcomeMessageObject = createRoomMessage(roomName, welcomeMessage);
+                        socket.send(JSON.stringify(welcomeMessageObject));
+                        console.log(`🎉 Sent welcome message to ${data.username} in room "${roomName}"`);
+                    }
+
+                    console.log(`➕ User "${data.username}" joined room "${roomName}"`);
+                    saveRooms(rooms);
                 }
+            }
 
 
-            });
+
         });
-    } else {
-        console.log('⚠️ No rooms found.');
-    }
-};
 
-module.exports = joinRooms;
+        socket.on('close', () => {
+            console.log(`❌ Connection closed for room: ${room.roomName}`);
+        });
 
+        socket.on('error', (error) => {
+            console.error(`💥 Error in room ${room.roomName}:`, error);
+        });
+    });
+}
+
+module.exports = { joinRooms };
