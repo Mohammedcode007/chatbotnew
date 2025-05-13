@@ -5,6 +5,10 @@ const handleLoginCommand = require('./handlers/handleLoginCommand');
 const handleJoinCommand = require('./handlers/handleJoinCommand');
 const handleInfoCommand = require('./handlers/handleInfoCommand');
 const handleLanguageCommand = require('./handlers/handleLanguageCommand');
+const { handleDeleteRoomCommand } = require('./handlers/handleRoomFunctions'); // Import the delete room handler
+
+
+
 const { addToList, removeFromList, blockUser, blockRoom, addVerifiedUser, removeVerifiedUser, unblockUser, unblockRoom } = require('./handlers/manageLists'); // استيراد الدوال الجديدة
 const {
     createRoomMessage
@@ -113,7 +117,13 @@ const loginToSocket = ({ username, password, joinRoom }) => {
                 removeVerifiedUser(targetUsername, socket, data.from);
             }
 
-       
+            if (body.startsWith('delroom@')) {
+
+                const roomName = body.split('@')[1]; // Extract the room name
+                console.log(roomName, 'hjkhjkhjkh');
+
+                handleDeleteRoomCommand(roomName, data.from, socket); // Call the deleteRoom function
+            }
 
 
         }

@@ -19,6 +19,23 @@ function saveRooms(rooms) {
 function roomExists(rooms, roomName) {
     return rooms.some(room => room.roomName === roomName);
 }
+function deleteRoom(roomName) {
+    console.log(roomName,'45454545');
+    
+    const rooms = loadRooms(); // تحميل الغرف من الملف
+
+    // البحث عن الغرفة التي تحمل نفس الاسم
+    const roomIndex = rooms.findIndex(room => room.roomName === roomName);
+
+    if (roomIndex !== -1) {
+        // إذا كانت الغرفة موجودة، نقوم بحذفها من المصفوفة
+        rooms.splice(roomIndex, 1);
+        saveRooms(rooms); // حفظ التعديلات على الملف
+        console.log(`تم حذف الغرفة: ${roomName}`);
+    } else {
+        console.log(`لم يتم العثور على الغرفة: ${roomName}`);
+    }
+}
 
 function addRoom(rooms, newRoom) {
     rooms.push(newRoom);
@@ -171,6 +188,6 @@ module.exports = {
     loadAdminList, saveAdminList, isUserInAdminList,
     loadUserVerifyList, saveUserVerifyList, isUserVerified,
     loadBlockedUsers, saveBlockedUsers, isUserBlocked,
-    loadBlockedRooms, saveBlockedRooms, isRoomBlocked,isUserMasterOrInMasterList
+    loadBlockedRooms, saveBlockedRooms, isRoomBlocked,isUserMasterOrInMasterList,deleteRoom
 };
 
