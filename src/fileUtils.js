@@ -3,6 +3,7 @@ const fs = require('fs');
 const roomsFilePath = './rooms.json';
 const usersLangFilePath = './usersLang.json';
 const usersFilePath = './usersLang.json'; // مسار ملف المستخدمين
+const { masterListPath, adminListPath, blockedUsersPath, blockedRoomsPath } = require('./constants');
 
 function loadRooms() {
     if (fs.existsSync(roomsFilePath)) {

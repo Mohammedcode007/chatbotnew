@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { masterListPath, adminListPath, blockedUsersPath, blockedRoomsPath } = require('../constants');
 const { createChatMessage } = require('../messageUtils');
-const { getUserLanguage } = require('../fileUtils'); // ✅ استيراد دالة اللغة
+const { getUserLanguage,isUserInMasterList } = require('../fileUtils'); // ✅ استيراد دالة اللغة
 const { verifiedUsersPath } = require('../constants');
 
 const logPath = require('../constants').actionsLogPath;
@@ -52,6 +52,10 @@ function translateMessage(key, lang, vars = {}) {
         block_room_success: {
             en: `Room ${vars.roomName} has been blocked.`,
             ar: `🚫 تم حظر الغرفة ${vars.roomName}.`
+        },
+        no_permission: {
+            en: "You do not have permission to perform this action.",
+            ar: "❌ لا تملك الصلاحيات للقيام بهذا الإجراء."
         },
         block_room_exists: {
             en: `Room ${vars.roomName} is already blocked.`,
@@ -245,16 +249,28 @@ function unblockRoom(roomName, socket, senderUsername) {
 // ✅ إضافة مستخدم موثّق
 function addVerifiedUser(username, socket, senderUsername, RoomName) {
     const lang = getUserLanguage(senderUsername) || 'en';
+
+    // التحقق إذا كان المستخدم الذي يحاول الإضافة هو من الماستر ليست
+    if (!isUserInMasterList(senderUsername)) {
+        const noPermissionMessage = translateMessage('no_permission', lang);
+        const errorMessage = createChatMessage(senderUsername, `❌ ${noPermissionMessage}`);
+        socket.send(JSON.stringify(errorMessage));
+        return;
+    }
+
     ensureFileExists(verifiedUsersPath);
     const list = JSON.parse(fs.readFileSync(verifiedUsersPath, 'utf8'));
 
-    const messageText = !list.includes(username)
+    const userExists = list.some(userObj => userObj.username === username);
+
+    const messageText = !userExists
         ? (() => {
-            list.push(username);
+            list.push({ username: username, vip: false, points: 10 });
             fs.writeFileSync(verifiedUsersPath, JSON.stringify(list, null, 2));
-            logAction('ADD_VERIFIED', username, senderUsername); // ✅ تسجيل الحدث
+            logAction('ADD_VERIFIED', username, senderUsername);
+
             const privateMessageToUser = createChatMessage(username, translateMessage('verified_add_success', lang, { username }));
-            socket.send(JSON.stringify(privateMessageToUser)); // إرسال الرسالة إلى المستخدم الجديد
+            socket.send(JSON.stringify(privateMessageToUser));
 
             return translateMessage('verified_add_success', lang, { username });
         })()
@@ -266,34 +282,56 @@ function addVerifiedUser(username, socket, senderUsername, RoomName) {
     socket.send(JSON.stringify(roomMessage));
 }
 
+
+
 // ✅ إزالة مستخدم موثّق
 function removeVerifiedUser(username, socket, senderUsername, RoomName) {
     const lang = getUserLanguage(senderUsername) || 'en';
+        if (!isUserInMasterList(senderUsername)) {
+        const noPermissionMessage = translateMessage('no_permission', lang);
+        const errorMessage = createChatMessage(senderUsername, `❌ ${noPermissionMessage}`);
+        socket.send(JSON.stringify(errorMessage));
+        return;
+    }
     ensureFileExists(verifiedUsersPath);
+
+    // قراءة الملف وتحويله إلى مصفوفة من الكائنات
     const list = JSON.parse(fs.readFileSync(verifiedUsersPath, 'utf8'));
 
-    // إزالة المسافات الفارغة من الطرفين وتحويل النص إلى حروف صغيرة
+    // تطبيع الاسم
     const normalizedUsername = username.trim().toLowerCase();
 
     const messageText = (() => {
-        const index = list.findIndex(user => user.trim().toLowerCase() === normalizedUsername); // البحث باستخدام التنسيق الموحد
+        // البحث عن المستخدم بالتطبيع داخل الكائنات
+        const index = list.findIndex(userObj =>
+            userObj.username && userObj.username.trim().toLowerCase() === normalizedUsername
+        );
+
         if (index !== -1) {
-            list.splice(index, 1);
+            const removedUser = list.splice(index, 1)[0]; // حذف المستخدم
             fs.writeFileSync(verifiedUsersPath, JSON.stringify(list, null, 2));
-            logAction('REMOVE_VERIFIED', username, senderUsername); // ✅ تسجيل الحدث
-            const privateMessage = createChatMessage(username, translateMessage('verified_remove_success', lang, { username }));
-            socket.send(JSON.stringify(privateMessage)); // إرسال الرسالة إلى المستخدم المحذوف
-            return translateMessage('verified_remove_success', lang, { username });
+            logAction('REMOVE_VERIFIED', removedUser.username, senderUsername); // تسجيل الحذف
+
+            const privateMessageToUser = createChatMessage(
+                removedUser.username,
+                translateMessage('verified_remove_success', lang, { username: removedUser.username })
+            );
+            socket.send(JSON.stringify(privateMessageToUser));
+
+            return translateMessage('verified_remove_success', lang, { username: removedUser.username });
         } else {
             return translateMessage('verified_not_found', lang, { username });
         }
     })();
 
+    // إرسال رسائل إلى المرسل والغرفة
     const privateMessage = createChatMessage(senderUsername, messageText);
     socket.send(JSON.stringify(privateMessage));
+
     const roomMessage = createRoomMessage(RoomName, messageText);
     socket.send(JSON.stringify(roomMessage));
 }
+
 
 
 
