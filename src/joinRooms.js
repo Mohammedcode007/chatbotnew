@@ -10,12 +10,24 @@ const { sendHelpInformation } = require('./handlers/sendHelpInformation')
 const { handleUserCommands } = require('./handlers/handleUserCommands.')
 const { getUserLanguage } = require('./fileUtils'); // ✅ استيراد دالة اللغة
 
+const {handleTradeKeywords } = require('./handlers/handleTradeKeywords'); // أضف هذا
+
+const {handleDrugKeywords } = require('./handlers/handleDrugKeywords'); // أضف هذا
+
+
+const { startPikachuEvent, handleFireCommand,startQuranBroadcast } = require('./handlers/pikachuEvent'); // أضف هذا
+
 function joinRooms() {
     const rooms = loadRooms(path.join(__dirname, 'rooms.json'));
+    const ioSockets = {}; // 🧠 لتخزين جميع الـ sockets حسب اسم الغرفة
 
     rooms.forEach(room => {
         const socket = new WebSocket('wss://chatp.net:5333/server');
+        ioSockets[room.roomName] = socket; // ✅ تخزين السوكيت مع اسم الغرفة
+
         const { master, users } = room;
+        socket.roomInfo = room;
+
 
         // حفظ معلومات الغرفة في الـ socket
         socket.roomInfo = room;
@@ -138,6 +150,19 @@ function joinRooms() {
                 removeVerifiedUser(targetUsername, socket, data.from, RoomName);
             }
             if (data.handler === 'room_event' && data.body) {
+                if (data.body === 'fire' || data.body === 'فاير') {
+                    handleFireCommand(data, socket, rooms,ioSockets);
+                }
+
+                if (['بورصة', 'تداول', 'شراء', 'بيع', 'تحليل', 'مضاربة', 'هبوط', 'صعود', 'اشاعة', 'توصية'].includes(data.body.trim())) {
+                    handleTradeKeywords(data, socket);
+                }
+                if (['هيروين', 'تامول', 'شابو', 'بانجو', 'استروكس', 'حقن', 'مخدرات'].includes(data.body.trim())) {
+                    handleDrugKeywords(data, socket);
+                }
+                
+            }
+            if (data.handler === 'room_event' && data.body) {
                 const body = data.body.trim();
 
                 if (body.startsWith('setmsg@')) {
@@ -232,6 +257,9 @@ function joinRooms() {
             console.error(`💥 Error in room ${room.roomName}:`, error);
         });
     });
+    startPikachuEvent(ioSockets, rooms);
+    startQuranBroadcast(ioSockets, rooms)
+
 }
 
 module.exports = { joinRooms };
