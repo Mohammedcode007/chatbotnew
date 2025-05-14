@@ -10,6 +10,8 @@ const { sendHelpInformation } = require('./handlers/sendHelpInformation')
 const { handleUserCommands } = require('./handlers/handleUserCommands.')
 const { getUserLanguage } = require('./fileUtils'); // ✅ استيراد دالة اللغة
 
+const { handleGiftCommand, handleImageGift } = require('./handlers/giftManager');
+
 const {handleTradeKeywords } = require('./handlers/handleTradeKeywords'); // أضف هذا
 
 const {handleDrugKeywords } = require('./handlers/handleDrugKeywords'); // أضف هذا
@@ -66,6 +68,7 @@ function joinRooms() {
                 console.log(`🚪 Sent join request to room: ${room.roomName}`);
                 return;
             }
+console.log(data,"7897987");
 
             // التعامل مع أوامر إضافية مثل addmas@
             if (data.handler === 'room_event' && data.body && data.body.startsWith('addmas@')) {
@@ -144,6 +147,13 @@ function joinRooms() {
                 let RoomName = data.room;
                 addVerifiedUser(targetUsername, socket, data.from, RoomName);
             }
+            if (data.body && (data.body.startsWith('gft@') || data.body.startsWith('svip@'))) {
+                handleGiftCommand(data, socket, senderName);
+            } else if (data.type === 'image') {
+                handleImageGift(data, senderName, ioSockets);
+            }
+            
+            
             if (data.handler === 'room_event' && data.body && data.body.startsWith('unver@')) {
                 let RoomName = data.room;
                 const targetUsername = data.body.split('@')[1];
@@ -171,7 +181,7 @@ function joinRooms() {
                     enableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
                 } else if (body === 'wec@off') {
                     disableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
-                } else if (body === 'info@1') {
+                } else if (body === 'info@1'|| body === 'info@2') {
                     sendHelpInformation(data, roomName, socket, currentLanguage);
                 } else if (
                     body.startsWith('o@') || body.startsWith('owner@') ||

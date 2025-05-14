@@ -198,7 +198,21 @@ function loadUsers() {
 function saveUsers(users) {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
 }
+function incrementUserGiftCount(username, type) {
+    const users = loadUsers();
 
+    const user = users.find(u => u.username === username);
+    if (!user) return; // المستخدم غير موجود
+
+    // تأكد من وجود الحقول
+    if (typeof user.sentGifts !== 'number') user.sentGifts = 0;
+    if (typeof user.receivedGifts !== 'number') user.receivedGifts = 0;
+
+    if (type === 'sentGifts') user.sentGifts += 1;
+    else if (type === 'receivedGifts') user.receivedGifts += 1;
+
+    saveUsers(users);
+}
 // زيادة النقاط للمستخدم
 function addPoints(username, amount = 1000) {
     const users = loadUsers();
@@ -293,7 +307,7 @@ module.exports = {
     loadUserVerifyList, saveUserVerifyList, isUserVerified,
     loadBlockedUsers, saveBlockedUsers, isUserBlocked,
     loadBlockedRooms, saveBlockedRooms, isRoomBlocked,isUserMasterOrInMasterList,deleteRoom,  loadUsers,
-    saveUsers,
+    saveUsers,incrementUserGiftCount,
     addPoints,
     incrementPikachuKills,checkUserExistsOrNotify,
     updateTradeHistory,   // ✅ هنا

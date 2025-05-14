@@ -1,6 +1,13 @@
-const { getUserLanguage, checkUserExistsOrNotify } = require('../fileUtils');
-const { addPoints, getUserPoints, updateTradeHistory, getTradeStats } = require('../fileUtils');
+const {
+    getUserLanguage,
+    getUserPoints,
+    addPoints,
+    updateTradeHistory,
+    getTradeStats
+} = require('../fileUtils');
 const { createRoomMessage } = require('../messageUtils');
+
+const cooldownMap = {}; // { user: { word: lastUsedTimestamp } }
 
 function handleTradeKeywords(data, socket) {
     const sender = data.from;
@@ -9,7 +16,6 @@ function handleTradeKeywords(data, socket) {
 
     const lang = getUserLanguage(sender) || 'ar';
 
-    // كلمات مفردة فقط تدل على التداول
     const tradeKeywords = {
         'بورصة': {
             ar: '📊 صفقة جديدة في البورصة!',
@@ -53,20 +59,36 @@ function handleTradeKeywords(data, socket) {
         }
     };
 
-    // تحقق من وجود الكلمة
     if (!Object.keys(tradeKeywords).includes(body)) return;
 
-    // إرسال الرسالة التعريفية (قبل الحساب)
+    // نظام التبريد لكل مستخدم ولكل كلمة
+    if (!cooldownMap[sender]) cooldownMap[sender] = {};
+
+    const now = Date.now();
+    const lastUsed = cooldownMap[sender][body] || 0;
+    const COOLDOWN_TIME = 3 * 60 * 1000; // 3 دقائق
+
+    if (now - lastUsed < COOLDOWN_TIME) {
+        const remaining = Math.ceil((COOLDOWN_TIME - (now - lastUsed)) / 1000);
+        const waitMessage = lang === 'ar'
+            ? `⏳ يجب الانتظار ${remaining} ثانية قبل استخدام كلمة "${body}" مرة أخرى.`
+            : `⏳ Please wait ${remaining} seconds before using the word "${body}" again.`;
+        socket.send(JSON.stringify(createRoomMessage(roomName, waitMessage)));
+        return;
+    }
+
+    cooldownMap[sender][body] = now;
+
+    // إرسال الرسالة التعريفية
     const introMessage = tradeKeywords[body][lang];
     socket.send(JSON.stringify(createRoomMessage(roomName, introMessage)));
 
-    // رسالة جاري حساب التداول
-    const calculatingMessage = lang === 'ar' ? 'جارٍ حساب البورصة... انتظر قليلاً' : 'Calculating the market... please wait a moment';
+    const calculatingMessage = lang === 'ar'
+        ? 'جارٍ حساب البورصة... انتظر قليلاً'
+        : 'Calculating the market... please wait a moment';
     socket.send(JSON.stringify(createRoomMessage(roomName, calculatingMessage)));
 
-    // تأخير 2 ثانية (أو أكثر) لمحاكاة الحساب
     setTimeout(() => {
-        // تحقق من وجود المستخدم
         const currentPoints = getUserPoints(sender);
         if (currentPoints <= 0) {
             const msg = lang === 'ar'
@@ -76,26 +98,23 @@ function handleTradeKeywords(data, socket) {
             return;
         }
 
-        // تحديد نسبة التغير بناء على الكلمة
         let percentChange;
         if (body === 'شراء' || body === 'صعود') {
-            percentChange = Math.floor(Math.random() * 16) + 5; // من +5% إلى +20%
+            percentChange = Math.floor(Math.random() * 16) + 5; // +5% إلى +20%
         } else if (body === 'بيع' || body === 'هبوط') {
-            percentChange = -1 * (Math.floor(Math.random() * 16) + 5); // من -5% إلى -20%
+            percentChange = -1 * (Math.floor(Math.random() * 16) + 5); // -5% إلى -20%
         } else if (body === 'مضاربة') {
-            percentChange = Math.floor(Math.random() * 41) - 20; // من -20% إلى +20%
+            percentChange = Math.floor(Math.random() * 41) - 20; // -20% إلى +20%
         } else {
-            percentChange = Math.floor(Math.random() * 21) - 10; // من -10% إلى +10%
+            percentChange = Math.floor(Math.random() * 21) - 10; // -10% إلى +10%
         }
 
         const pointsChange = Math.floor(currentPoints * (percentChange / 100));
         const finalPoints = addPoints(sender, pointsChange);
 
-        // تحديث السجل
         updateTradeHistory(sender, percentChange > 0);
         const stats = getTradeStats(sender);
 
-        // إعداد الرسالة النهائية
         let response;
         if (percentChange === 0) {
             response = lang === 'ar'
@@ -111,14 +130,13 @@ function handleTradeKeywords(data, socket) {
                 : `📉 ${sender} lost ${Math.abs(pointsChange)} points (${percentChange}%)!`;
         }
 
-        // إضافة إحصائيات التداول
         response += lang === 'ar'
             ? `\n📊 سجل تداولك: ${stats.win} ربح / ${stats.lose} خسارة (${stats.percent}٪ نجاح)`
             : `\n📊 Trade history: ${stats.win} win / ${stats.lose} loss (${stats.percent}% success)`;
 
         socket.send(JSON.stringify(createRoomMessage(roomName, response)));
         console.log(`[📊 TRADE] ${sender} used '${body}' → ${percentChange}% (${pointsChange} points)`);
-    }, 2000); // تأخير 2 ثانية
+    }, 2000);
 }
 
 module.exports = {

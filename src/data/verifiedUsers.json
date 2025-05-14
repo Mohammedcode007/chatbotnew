@@ -10,16 +10,20 @@
   {
     "username": "sembaa",
     "vip": true,
-    "points": 10
+    "points": 10,
+    "sentGifts": 0,
+    "receivedGifts": 12
   },
   {
     "username": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
-    "vip": false,
-    "points": 421,
+    "vip": true,
+    "points": 179,
     "pikachuKills": 6,
     "trades": {
       "win": 11,
-      "lose": 18
-    }
+      "lose": 21
+    },
+    "sentGifts": 12,
+    "receivedGifts": 0
   }
 ]

@@ -131,6 +131,32 @@ const createRoomMessage = (roomName, body) => {
         length: ''
     };
 };
+const createMainImageMessage = (roomName, imageURL) => {
+    return {
+        handler: 'room_message',
+        id: 'TclBVHgBzPGTMRTNpgWV',
+        type: 'image',
+        room: roomName,
+        url: imageURL,
+        length: '',
+        body: ''
+    };
+};
+
+// ✅ دالة لبناء رسالة هدية (مثلاً عند إرسال هدية لمستخدم أو الغرفة)
+// messageUtils.js
+function createGiftMessage(roomName, imageURL) {
+ 
+    return {
+        handler: 'room_message',
+        id: 'TclBVHgBzPGTMRTNpgWV',
+        room: roomName,
+        type: 'image',
+        body: "",
+        url: imageURL,
+        length: ''
+    };
+}
 
 module.exports = {
     createChatMessage,
@@ -139,5 +165,7 @@ module.exports = {
     createErrorMessage,
     createInfoMessage,
     createLanguageChangeMessage,
-    createRoomMessage
+    createRoomMessage,
+    createMainImageMessage,
+    createGiftMessage
 };

@@ -1,7 +1,13 @@
-const { getUserLanguage, getUserPoints, addPoints, updateTradeHistory, getTradeStats } = require('../fileUtils');
+const {
+    getUserLanguage,
+    getUserPoints,
+    addPoints,
+    updateTradeHistory,
+    getTradeStats
+} = require('../fileUtils');
 const { createRoomMessage } = require('../messageUtils');
 
-const cooldownMap = {}; // لتتبع وقت الاستخدام لكل مستخدم
+const cooldownMap = {}; // { user: { word: lastUsedTimestamp } }
 
 function handleDrugKeywords(data, socket) {
     const sender = data.from;
@@ -10,43 +16,73 @@ function handleDrugKeywords(data, socket) {
     const lang = getUserLanguage(sender) || 'ar';
 
     const drugKeywords = {
-        'كوكايين': { ar: '🚨 الكوكايين مادة خطيرة تسبب الإدمان والموت.', en: '🚨 Cocaine is highly addictive and deadly.' },
-        'حشيش': { ar: '🚨 الحشيش يؤثر على الذاكرة والتركيز.', en: '🚨 Hashish affects memory and focus.' },
-        'هيروين': { ar: '🚨 الهيروين يؤدي إلى الإدمان بسرعة شديدة.', en: '🚨 Heroin causes severe and rapid addiction.' },
-        'تامول': { ar: '🚨 التامول يسبب إدمانًا جسديًا خطيرًا.', en: '🚨 Tramadol causes serious physical addiction.' },
-        'شابو': { ar: '🚨 الشابو مدمر للعقل والجسم.', en: '🚨 Shabu destroys the mind and body.' },
-        'بانجو': { ar: '🚨 البانجو يؤثر سلبًا على الجهاز العصبي.', en: '🚨 Bangoo negatively affects the nervous system.' },
-        'استروكس': { ar: '🚨 الاستروكس قد يؤدي إلى الهلاوس والموت المفاجئ.', en: '🚨 Strox can cause hallucinations and sudden death.' },
-        'حقن': { ar: '🚨 الحقن يزيد خطر الإصابة بالأمراض.', en: '🚨 Injections increase the risk of disease.' },
-        'مخدرات': { ar: '🚨 المخدرات تدمر مستقبل الإنسان.', en: '🚨 Drugs destroy the future of a person.' }
+        'كوكايين': {
+            ar: '🚨 الكوكايين مادة خطيرة تسبب الإدمان والموت.',
+            en: '🚨 Cocaine is highly addictive and deadly.'
+        },
+        'حشيش': {
+            ar: '🚨 الحشيش يؤثر على الذاكرة والتركيز.',
+            en: '🚨 Hashish affects memory and focus.'
+        },
+        'هيروين': {
+            ar: '🚨 الهيروين يؤدي إلى الإدمان بسرعة شديدة.',
+            en: '🚨 Heroin causes severe and rapid addiction.'
+        },
+        'تامول': {
+            ar: '🚨 التامول يسبب إدمانًا جسديًا خطيرًا.',
+            en: '🚨 Tramadol causes serious physical addiction.'
+        },
+        'شابو': {
+            ar: '🚨 الشابو مدمر للعقل والجسم.',
+            en: '🚨 Shabu destroys the mind and body.'
+        },
+        'بانجو': {
+            ar: '🚨 البانجو يؤثر سلبًا على الجهاز العصبي.',
+            en: '🚨 Bangoo negatively affects the nervous system.'
+        },
+        'استروكس': {
+            ar: '🚨 الاستروكس قد يؤدي إلى الهلاوس والموت المفاجئ.',
+            en: '🚨 Strox can cause hallucinations and sudden death.'
+        },
+        'حقن': {
+            ar: '🚨 الحقن يزيد خطر الإصابة بالأمراض.',
+            en: '🚨 Injections increase the risk of disease.'
+        },
+        'مخدرات': {
+            ar: '🚨 المخدرات تدمر مستقبل الإنسان.',
+            en: '🚨 Drugs destroy the future of a person.'
+        }
     };
 
-    // تحقق من وجود الكلمة
     if (!Object.keys(drugKeywords).includes(body)) return;
 
-    // التحقق من التبريد
+    // إعداد التبريد للمستخدم والكلمة
+    if (!cooldownMap[sender]) cooldownMap[sender] = {};
+
     const now = Date.now();
-    const lastUsed = cooldownMap[sender] || 0;
+    const lastUsed = cooldownMap[sender][body] || 0;
     const COOLDOWN_TIME = 3 * 60 * 1000; // 3 دقائق
 
     if (now - lastUsed < COOLDOWN_TIME) {
         const remaining = Math.ceil((COOLDOWN_TIME - (now - lastUsed)) / 1000);
         const waitMessage = lang === 'ar'
-            ? `⏳ يجب الانتظار ${remaining} ثانية قبل استخدام هذه الكلمة مرة أخرى.`
-            : `⏳ Please wait ${remaining} seconds before using this word again.`;
+            ? `⏳ يجب الانتظار ${remaining} ثانية قبل استخدام كلمة "${body}" مرة أخرى.`
+            : `⏳ Please wait ${remaining} seconds before using the word "${body}" again.`;
         socket.send(JSON.stringify(createRoomMessage(roomName, waitMessage)));
         return;
     }
 
-    // تسجيل آخر استخدام
-    cooldownMap[sender] = now;
+    // سجل آخر استخدام
+    cooldownMap[sender][body] = now;
 
     // إرسال التحذير
     const warningMessage = drugKeywords[body][lang];
     socket.send(JSON.stringify(createRoomMessage(roomName, warningMessage)));
 
-    // رسالة انتظار
-    const checking = lang === 'ar' ? '⏳ جاري تحليل التأثير...' : '⏳ Analyzing effect...';
+    // إرسال رسالة تحليل
+    const checking = lang === 'ar'
+        ? '⏳ جاري تحليل التأثير...'
+        : '⏳ Analyzing effect...';
     socket.send(JSON.stringify(createRoomMessage(roomName, checking)));
 
     setTimeout(() => {
@@ -59,19 +95,16 @@ function handleDrugKeywords(data, socket) {
             return;
         }
 
-        // نسبة خسارة أعلى من الربح
-        const isLoss = Math.random() < 0.85; // 85% خسارة، 15% ربح
-        let percentChange;
-        if (isLoss) {
-            percentChange = -1 * (Math.floor(Math.random() * 31) + 10); // -10% إلى -40%
-        } else {
-            percentChange = Math.floor(Math.random() * 5) + 1; // +1% إلى +5%
-        }
+        // تحديد إذا كانت خسارة أو ربح
+        const isLoss = Math.random() < 0.85;
+        let percentChange = isLoss
+            ? -1 * (Math.floor(Math.random() * 31) + 10) // -10% إلى -40%
+            : Math.floor(Math.random() * 5) + 1;         // +1% إلى +5%
 
         const pointsChange = Math.floor(currentPoints * (percentChange / 100));
         const finalPoints = addPoints(sender, pointsChange);
 
-        // تحديث سجل التداول
+        // تحديث السجل
         updateTradeHistory(sender, percentChange > 0);
 
         // رسالة النتيجة
