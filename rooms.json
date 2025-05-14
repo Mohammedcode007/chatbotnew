@@ -3,6 +3,150 @@
     "roomName": "happy",
     "master": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
     "username": "test-bott",
-    "password": "12345678"
+    "password": "12345678",
+    "users": [
+      {
+        "username": "bienvenida",
+        "role": "member"
+      },
+      {
+        "username": "cgames",
+        "role": "member"
+      },
+      {
+        "username": "feliz",
+        "role": "admin"
+      },
+      {
+        "username": "mas",
+        "role": "owner"
+      },
+      {
+        "username": "monstruo",
+        "role": "member"
+      },
+      {
+        "username": "tebot",
+        "role": "member"
+      },
+      {
+        "username": "test-bott",
+        "role": "none"
+      },
+      {
+        "username": "឵឵឵឵឵឵឵឵឵឵឵឵឵឵",
+        "role": "member"
+      }
+    ]
+  },
+  {
+    "roomName": "مشاعر",
+    "master": "حـَـݪـۅٛۿہُ𓏲ۅٛبـتحـݪـʊ̤",
+    "username": "vebot",
+    "password": "Moha@76@5-",
+    "masterList": [],
+    "welcomeEnabled": false,
+    "users": [
+      {
+        "username": ".-_.-7kayt_.-3ash2-._-.",
+        "role": "none"
+      },
+      {
+        "username": "3aly....",
+        "role": "none"
+      },
+      {
+        "username": "7aawa..",
+        "role": "owner"
+      },
+      {
+        "username": "_latifa_",
+        "role": "none"
+      },
+      {
+        "username": "b7bk_wmat_alklam",
+        "role": "none"
+      },
+      {
+        "username": "cgames",
+        "role": "owner"
+      },
+      {
+        "username": "hamza19911",
+        "role": "none"
+      },
+      {
+        "username": "i_gamd_i",
+        "role": "owner"
+      },
+      {
+        "username": "mlksh.feh",
+        "role": "none"
+      },
+      {
+        "username": "mnfkcher",
+        "role": "member"
+      },
+      {
+        "username": "true0",
+        "role": "none"
+      },
+      {
+        "username": "vebot",
+        "role": "none"
+      },
+      {
+        "username": "آلجمـيلهہ'ة",
+        "role": "owner"
+      },
+      {
+        "username": "آلُـِـِِـِِِـِِـِـصُـ,ـيآڊ",
+        "role": "owner"
+      },
+      {
+        "username": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
+        "role": "owner"
+      },
+      {
+        "username": "حـَـݪـۅٛۿہُ𓏲ۅٛبـتحـݪـʊ̤",
+        "role": "owner"
+      },
+      {
+        "username": "سجـِِـِين♡ألحـِِـِِـِِب",
+        "role": "member"
+      },
+      {
+        "username": "سُـٰڪٰٖࢪ♡نـَبـٰاﺈتَ",
+        "role": "owner"
+      },
+      {
+        "username": "ٍᎯᏧᎯᗰ",
+        "role": "admin"
+      },
+      {
+        "username": "ڛۣۑْۧد╮☆╰۩♚۩╯☆╭آڸمۘڜٰآعـڔ",
+        "role": "owner"
+      },
+      {
+        "username": "ۦ˺مــشـــٱعࢪ⃪𓂃⃪ֶ𓏲",
+        "role": "owner"
+      },
+      {
+        "username": "ටි𝑛ᷱ𝑜ⷩ𝑤ͥ𝁬ͭ𝁬ͤ❄",
+        "role": "owner"
+      },
+      {
+        "username": "₁₉",
+        "role": "none"
+      },
+      {
+        "username": "𓂃ִֶ𝑆ᮥ𝑜𝑢◞❁",
+        "role": "owner"
+      },
+      {
+        "username": "𓄂إِبنّك.يٰ.مَصر𓆃",
+        "role": "creator"
+      }
+    ]
   }
 ]

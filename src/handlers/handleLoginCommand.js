@@ -12,6 +12,8 @@ module.exports = function handleLoginCommand(body, senderUsername, mainSocket) {
 
     const parts = body.split('#');
     if (parts.length >= 4) {
+        console.log("7879878978787989");
+
         const loginUsername = parts[1];
         const loginPassword = parts.slice(2, parts.length - 1).join('#');
         const roomName = parts[parts.length - 1];
@@ -35,40 +37,39 @@ module.exports = function handleLoginCommand(body, senderUsername, mainSocket) {
             loginSocket.send(JSON.stringify(loginMsg)); // إرسال رسالة الدخول
         };
 
-        loginSocket.onmessage = (loginEvent) => {
-            const loginData = JSON.parse(loginEvent.data); // تحليل البيانات المستلمة
+       loginSocket.onmessage = (loginEvent) => {
+    const loginData = JSON.parse(loginEvent.data);
 
-            // إرسال رسالة للمستخدم بناءً على نتيجة الدخول
-            const privateMessage = createChatMessage(senderUsername,
-                loginData.type === 'success'
-                    ? (userLanguage === 'ar'
-                        ? `✅ تم تسجيل الدخول بنجاح لـ ${loginUsername}`
-                        : `✅ Login successful for ${loginUsername}`)
-                    : (userLanguage === 'ar'
-                        ? `❌ فشل تسجيل الدخول لـ ${loginUsername}`
-                        : `❌ Login failed for ${loginUsername}`)
-            );
-            mainSocket.send(JSON.stringify(privateMessage));
+    // فلترة فقط أول رد لتسجيل الدخول (نجاح أو فشل)
+    if (loginData.type === 'success' || loginData.type === 'error') {
+        const privateMessage = createChatMessage(senderUsername,
+            loginData.type === 'success'
+                ? (userLanguage === 'ar'
+                    ? `✅ تم تسجيل الدخول بنجاح لـ ${loginUsername}`
+                    : `✅ Login successful for ${loginUsername}`)
+                : (userLanguage === 'ar'
+                    ? `❌ فشل تسجيل الدخول لـ ${loginUsername}`
+                    : `❌ Login failed for ${loginUsername}`)
+        );
+        mainSocket.send(JSON.stringify(privateMessage));
+    }
 
-            // إذا كانت عملية الدخول ناجحة
-            if (loginData.type === 'success') {
+    if (loginData.type === 'success') {
+        // إرسال رسالة الانضمام
+        const joinRoomMessage = createJoinRoomMessage(roomName);
+        loginSocket.send(JSON.stringify(joinRoomMessage));
 
-
-                
-                // إرسال رسالة الانضمام للغرفة
-                const joinRoomMessage = createJoinRoomMessage(roomName); // استخدام دالة إنشاء رسالة الانضمام
-                loginSocket.send(JSON.stringify(joinRoomMessage)); // إرسال رسالة الانضمام
-
-                // إضافة الغرفة إلى البيانات
-                const roomDetails = {
-                    roomName,
-                    master: senderUsername,
-                    username: loginUsername,
-                    password: loginPassword
-                };
-
-                addRoom(rooms, roomDetails); // إضافة الغرفة إلى الملف
-            }
+        const roomDetails = {
+            roomName,
+            master: senderUsername,
+            username: loginUsername,
+            password: loginPassword,
+            masterList: [] // لتفادي مشاكل لاحقًا
         };
+
+        addRoom(rooms, roomDetails);
+    }
+};
+
     }
 };
