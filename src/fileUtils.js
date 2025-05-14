@@ -300,8 +300,62 @@ function getTradeStats(username) {
 }
 
 
+
+
+
+
+function loadGifts() {
+    const filePath = path.join(__dirname, 'data', 'exampleGifts.json');
+
+    // التحقق من وجود الملف
+    if (!fs.existsSync(filePath)) {
+        // إنشاء مجلد data إذا لم يكن موجودًا
+        const dirPath = path.join(__dirname, 'data');
+        if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath);
+        }
+
+        // إنشاء الملف مع بيانات افتراضية
+        const defaultGifts = [
+            { id: 1, name: 'Red Rose', urls: ['https://example.com/gift1.png'] },
+            { id: 2, name: 'Chocolate Box', urls: ['https://example.com/gift2.png'] },
+            { id: 3, name: 'Golden Trophy', urls: ['https://example.com/gift3.png'] }
+        ];
+
+        fs.writeFileSync(filePath, JSON.stringify(defaultGifts, null, 2), 'utf8');
+        return defaultGifts;
+    }
+
+    // قراءة البيانات من الملف
+    const data = fs.readFileSync(filePath, 'utf8');
+    const gifts = JSON.parse(data);
+
+    // اختيار رابط عشوائي لكل هدية
+    gifts.forEach(gift => {
+        const randomIndex = Math.floor(Math.random() * gift.urls.length);
+        gift.url = gift.urls[randomIndex];  // اختيار رابط عشوائي
+    });
+
+    return gifts;
+}
+
+
+
+// دالة لعرض قائمة الهدايا المتاحة
+function showAvailableGifts(socket, room) {
+    const gifts = loadGifts();
+    let message = '🎁 Available Gifts:\n';
+    
+    gifts.forEach(gift => {
+        message += `${gift.id}. ${gift.name}\n`;
+    });
+
+    const giftListMessage = createRoomMessage(room, message);
+    socket.send(JSON.stringify(giftListMessage));
+}
+
 module.exports = {
-    loadRooms, saveRooms, roomExists, addRoom, saveUserLanguage, loadUserLanguage, getUserLanguage,
+    loadRooms, saveRooms,showAvailableGifts,loadGifts, roomExists, addRoom, saveUserLanguage, loadUserLanguage, getUserLanguage,
     loadMasterList, saveMasterList, isUserInMasterList,getUserPoints,
     loadAdminList, saveAdminList, isUserInAdminList,
     loadUserVerifyList, saveUserVerifyList, isUserVerified,

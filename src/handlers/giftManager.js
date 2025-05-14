@@ -1,5 +1,5 @@
 
-const { loadRooms, incrementUserGiftCount, loadUsers, getUserLanguage } = require('../fileUtils');
+const { loadRooms, incrementUserGiftCount, loadUsers, getUserLanguage,loadGifts } = require('../fileUtils');
 const { createGiftMessage } = require('../messageUtils');
 const { createRoomMessage } = require('../messageUtils');
 
@@ -12,6 +12,8 @@ function isUserVip(username) {
     const user = users.find(u => u.username === username);
     return user && user.vip;
 }
+
+const lastGiftSentTime = {}; // لتخزين وقت آخر هدية تم إرسالها لكل مستخدم
 
 function handleGiftCommand(data, socket, senderName) {
     const body = data.body;
@@ -40,6 +42,43 @@ function handleGiftCommand(data, socket, senderName) {
     }
 
     if (!recipient) return;
+
+    // التحقق من وجود المستلم في قائمة المستخدمين
+    const users = loadUsers(); // هذه الدالة يجب أن تقوم بتحميل جميع المستخدمين من ملف أو قاعدة بيانات
+    const recipientUser = users.find(u => u.username === recipient);
+
+    if (!recipientUser) {
+        const lang = getUserLanguage(senderName) || 'ar';
+
+        const userNotFoundText = lang === 'ar'
+            ? `⚠️ المستخدم ${recipient} غير موجود! تأكد من اسم المستخدم وأعد المحاولة.` 
+            : `⚠️ User ${recipient} not found! Please check the username and try again.`;
+
+        const userNotFoundMsg = createRoomMessage(data.room, userNotFoundText);
+        socket.send(JSON.stringify(userNotFoundMsg));
+
+        return;
+    }
+
+    // التحقق من الوقت بين الهدايا
+    const currentTime = Date.now();
+    const lastSentTime = lastGiftSentTime[senderName];
+
+    if (lastSentTime && currentTime - lastSentTime < 300000) { // 5 دقائق
+        const lang = getUserLanguage(senderName) || 'ar';
+
+        const waitMessage = lang === 'ar'
+            ? `⚠️ يجب أن تنتظر 5 دقائق قبل إرسال هدية أخرى.`
+            : `⚠️ You must wait 5 minutes before sending another gift.`;
+
+        const waitMsg = createRoomMessage(data.room, waitMessage);
+        socket.send(JSON.stringify(waitMsg));
+
+        return;
+    }
+
+    // تحديث وقت آخر هدية تم إرسالها
+    lastGiftSentTime[senderName] = currentTime;
 
     // التحقق من حالة الـ VIP
     if (!isUserVip(senderName)) {
@@ -90,8 +129,9 @@ function handleGiftCommand(data, socket, senderName) {
             socket.send(JSON.stringify(timeoutMsg));
         }
     }, 30000);
-    
 }
+
+
 
 function handleImageGift(data, senderName, ioSockets) {
     if (!pendingGifts.hasOwnProperty(senderName)) return;
@@ -123,9 +163,21 @@ function handleImageGift(data, senderName, ioSockets) {
 
         if (!targetSocket || targetSocket.readyState !== 1) return;
 
-     const detailText = lang === 'ar'
-  ? `\u200E🎁\n👤 ${senderName}\n🎯 ${recipient}\n🏠 ${data.room}\n💌 ${customMessage || '—'}\n📦 📤${sentCount} 📥${receivedCount}\n🖼️👇`
-  : `\u200E🎁\n👤 ${senderName}\n🎯 ${recipient}\n🏠 ${data.room}\n💌 ${customMessage || '—'}\n📦 📤${sentCount} 📥${receivedCount}\n🖼️👇`;
+ const detailText = lang === 'ar'
+  ? `╔═══ SUPER GIFT ═══╗  
+🏰 𝑹𝒐𝒐𝒎: ${data.room}  
+👑 𝑭𝒓𝒐𝒎: ${senderName}  
+💖 𝑻𝒐: ${recipient}  
+📝 𝑴𝒆𝒔𝒔𝒂𝒈𝒆: “${customMessage || '—'}” 🎉  
+🎁 𝑺𝒆𝒏𝒕: ${sentCount} | 🌟 𝑹𝒆𝒄𝒆𝒊𝒗𝒆𝒅: ${receivedCount}  
+╚════════════════╝`
+  : `╔═══ SUPER GIFT ═══╗  
+🏰 𝑹𝒐𝒐𝒎: ${data.room}  
+👑 𝑭𝒓𝒐𝒎: ${senderName}  
+💖 𝑻𝒐: ${recipient}  
+📝 𝑴𝒆𝒔𝒔𝒂𝒈𝒆: “${customMessage || '—'}” 🎉  
+🎁 𝑺𝒆𝒏𝒕: ${sentCount} | 🌟 𝑹𝒆𝒄𝒆𝒊𝒗𝒆𝒅: ${receivedCount}  
+╚════════════════╝`;
 
         const detailMsg = createRoomMessage(roomName, detailText);
         targetSocket.send(JSON.stringify(detailMsg));
@@ -146,7 +198,107 @@ function handleImageGift(data, senderName, ioSockets) {
 }
 
 
+
+function handleGiftSelection(data, senderName, ioSockets) {
+    const body = data.body;
+    const parts = body.split('@');
+
+    if (parts.length < 3 || parts[0] !== 'gfg') return;
+
+    const giftId = parseInt(parts[1], 10);
+    const recipient = parts[2].trim();
+
+    if (isNaN(giftId)) return;
+
+    const gifts = loadGifts();
+    const gift = gifts.find(g => g.id === giftId);
+    if (!gift) return;
+
+    const users = loadUsers();
+    const senderData = users.find(u => u.username === senderName);
+    const recipientData = users.find(u => u.username === recipient);
+
+    if (!recipientData) return;
+
+    // تحديث العدادات
+    incrementUserGiftCount(senderName, 'sentGifts');
+    incrementUserGiftCount(senderName, 'receivedGifts');
+
+    // إعادة تحميل العدادات بعد التحديث
+    const updatedUsers = loadUsers();
+    const updatedSender = updatedUsers.find(u => u.username === senderName);
+    const updatedRecipient = updatedUsers.find(u => u.username === recipient);
+
+    const sentCount = updatedSender?.sentGifts || 0;
+    const receivedCount = updatedRecipient?.receivedGifts || 0;
+
+    // تحديد اللغة
+    const lang = getUserLanguage(senderName) || 'ar';
+
+    const detailText = lang === 'ar'
+        ? `╔═══ هدية صورة ═══╗  
+🏰 الغرفة: ${data.room}  
+👑 من: ${senderName}  
+💖 إلى: ${recipient}  
+🎁 اسم الهدية: ${gift.name}  
+📦 عدد الهدايا: أرسلت: ${sentCount} | استلمت: ${receivedCount}  
+╚════════════════╝`
+        : `╔═══ Image Gift ═══╗  
+🏰 Room: ${data.room}  
+👑 From: ${senderName}  
+💖 To: ${recipient}  
+🎁 Gift: ${gift.name}  
+📦 Sent: ${sentCount} | Received: ${receivedCount}  
+╚════════════════╝`;
+
+    const rooms = loadRooms();
+    rooms.forEach(room => {
+        const roomName = room.roomName || room;
+        const targetSocket = ioSockets[roomName];
+
+        if (!targetSocket || targetSocket.readyState !== 1) return;
+
+        // إرسال التفاصيل النصية
+        const detailMsg = createRoomMessage(roomName, detailText);
+        targetSocket.send(JSON.stringify(detailMsg));
+
+        // إرسال صورة الهدية
+        const giftMsg = createGiftMessage(
+            roomName,
+            gift.url,
+            senderName,
+            recipient,
+            false,
+            `🎁 ${senderName} أرسل هدية (${gift.name}) إلى ${recipient}!`
+        );
+        targetSocket.send(JSON.stringify(giftMsg));
+    });
+}
+
+
+
+function handleGiftListRequest(data, socket, senderName) {
+    // تحميل قائمة الهدايا
+    const gifts = loadGifts();
+    
+    // تحضير الرسالة التي تحتوي على قائمة الهدايا
+    let giftListMessage = '🎁 Available gifts:\n';
+
+    // إضافة كل هدية مع رقمها
+    gifts.forEach((gift, index) => {
+        giftListMessage += `${index + 1}. ${gift.name}\n`; // إضافة كل هدية مع رقمها
+    });
+
+    // إرسال الرسالة إلى المستخدم الذي طلب القائمة
+    const giftListResponse = createRoomMessage(data.room, giftListMessage);
+    socket.send(JSON.stringify(giftListResponse));
+}
+
+
+
 module.exports = {
     handleGiftCommand,
-    handleImageGift
+    handleImageGift,
+    handleGiftSelection,
+    handleGiftListRequest
 };

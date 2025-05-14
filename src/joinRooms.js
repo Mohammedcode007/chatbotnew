@@ -10,14 +10,14 @@ const { sendHelpInformation } = require('./handlers/sendHelpInformation')
 const { handleUserCommands } = require('./handlers/handleUserCommands.')
 const { getUserLanguage } = require('./fileUtils'); // ✅ استيراد دالة اللغة
 
-const { handleGiftCommand, handleImageGift } = require('./handlers/giftManager');
+const { handleGiftCommand, handleImageGift, handleGiftListRequest, handleGiftSelection } = require('./handlers/giftManager');
 
-const {handleTradeKeywords } = require('./handlers/handleTradeKeywords'); // أضف هذا
+const { handleTradeKeywords } = require('./handlers/handleTradeKeywords'); // أضف هذا
 
-const {handleDrugKeywords } = require('./handlers/handleDrugKeywords'); // أضف هذا
+const { handleDrugKeywords } = require('./handlers/handleDrugKeywords'); // أضف هذا
 
 
-const { startPikachuEvent, handleFireCommand,startQuranBroadcast } = require('./handlers/pikachuEvent'); // أضف هذا
+const { startPikachuEvent, handleFireCommand, startQuranBroadcast } = require('./handlers/pikachuEvent'); // أضف هذا
 
 function joinRooms() {
     const rooms = loadRooms(path.join(__dirname, 'rooms.json'));
@@ -68,7 +68,7 @@ function joinRooms() {
                 console.log(`🚪 Sent join request to room: ${room.roomName}`);
                 return;
             }
-console.log(data,"7897987");
+            console.log(data, "7897987");
 
             // التعامل مع أوامر إضافية مثل addmas@
             if (data.handler === 'room_event' && data.body && data.body.startsWith('addmas@')) {
@@ -151,9 +151,13 @@ console.log(data,"7897987");
                 handleGiftCommand(data, socket, senderName);
             } else if (data.type === 'image') {
                 handleImageGift(data, senderName, ioSockets);
+            } else if (data.body && data.body === 'gfg') { // إضافة شرط للتحقق من أمر gfg
+                handleGiftListRequest(data, socket, senderName);  // دالة جديدة لإرسال قائمة الهدايا
+            } else if (data.body && data.body.startsWith('gfg@')) {
+                handleGiftSelection(data, senderName, ioSockets);
             }
-            
-            
+
+
             if (data.handler === 'room_event' && data.body && data.body.startsWith('unver@')) {
                 let RoomName = data.room;
                 const targetUsername = data.body.split('@')[1];
@@ -161,7 +165,7 @@ console.log(data,"7897987");
             }
             if (data.handler === 'room_event' && data.body) {
                 if (data.body === 'fire' || data.body === 'فاير') {
-                    handleFireCommand(data, socket, rooms,ioSockets);
+                    handleFireCommand(data, socket, rooms, ioSockets);
                 }
 
                 if (['بورصة', 'تداول', 'شراء', 'بيع', 'تحليل', 'مضاربة', 'هبوط', 'صعود', 'اشاعة', 'توصية'].includes(data.body.trim())) {
@@ -170,7 +174,7 @@ console.log(data,"7897987");
                 if (['هيروين', 'تامول', 'شابو', 'بانجو', 'استروكس', 'حقن', 'مخدرات'].includes(data.body.trim())) {
                     handleDrugKeywords(data, socket);
                 }
-                
+
             }
             if (data.handler === 'room_event' && data.body) {
                 const body = data.body.trim();
@@ -181,7 +185,7 @@ console.log(data,"7897987");
                     enableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
                 } else if (body === 'wec@off') {
                     disableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
-                } else if (body === 'info@1'|| body === 'info@2') {
+                } else if (body === 'info@1' || body === 'info@2') {
                     sendHelpInformation(data, roomName, socket, currentLanguage);
                 } else if (
                     body.startsWith('o@') || body.startsWith('owner@') ||
