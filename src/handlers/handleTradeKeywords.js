@@ -56,6 +56,38 @@ function handleTradeKeywords(data, socket) {
         'توصية': {
             ar: '📝 تم تلقي توصية جديدة... قرر بحكمة.',
             en: '📝 A new recommendation has been received... decide wisely.'
+        },
+        'استثمار': {
+            ar: '💼 فرصة استثمار جديدة تظهر!',
+            en: '💼 New investment opportunity appears!'
+        },
+        'فرصة': {
+            ar: '✨ فرصة ذهبية تنتظرك!',
+            en: '✨ A golden opportunity awaits you!'
+        },
+        'خسارة': {
+            ar: '⚠️ خسارة محتملة في السوق!',
+            en: '⚠️ Possible loss in the market!'
+        },
+        'حظ': {
+            ar: '🍀 الحظ قد يلعب دوره الآن!',
+            en: '🍀 Luck may play its role now!'
+        },
+        'صيد': {
+            ar: '🎯 فرصة صيد ممتازة!',
+            en: '🎯 Excellent hunting opportunity!'
+        },
+        'حظوظ': {
+            ar: '🍀 حظوظ متغيرة في السوق!',
+            en: '🍀 Changing luck in the market!'
+        },
+        'مخاطرة': {
+            ar: '⚡ مخاطرة عالية في الصفقة!',
+            en: '⚡ High risk in the deal!'
+        },
+        'نجاح': {
+            ar: '🏆 صفقة ناجحة بكل المقاييس!',
+            en: '🏆 A successful deal by all means!'
         }
     };
 
@@ -99,12 +131,35 @@ function handleTradeKeywords(data, socket) {
         }
 
         let percentChange;
-        if (body === 'شراء' || body === 'صعود') {
+
+        if (
+            ['شراء', 'buy',
+             'صعود', 'rise',
+             'استثمار', 'investment',
+             'فرصة', 'opportunity',
+             'صيد', 'hunt',
+             'نجاح', 'success'
+            ].includes(body)
+        ) {
             percentChange = Math.floor(Math.random() * 16) + 5; // +5% إلى +20%
-        } else if (body === 'بيع' || body === 'هبوط') {
+        } else if (
+            ['بيع', 'sell',
+             'هبوط', 'fall',
+             'خسارة', 'loss',
+             'مخاطرة', 'risk'
+            ].includes(body)
+        ) {
             percentChange = -1 * (Math.floor(Math.random() * 16) + 5); // -5% إلى -20%
-        } else if (body === 'مضاربة') {
+        } else if (
+            ['مضاربة', 'speculation',
+             'حظوظ', 'luckiness'
+            ].includes(body)
+        ) {
             percentChange = Math.floor(Math.random() * 41) - 20; // -20% إلى +20%
+        } else if (
+            ['حظ', 'luck'].includes(body)
+        ) {
+            percentChange = Math.floor(Math.random() * 31) - 15; // -15% إلى +15%
         } else {
             percentChange = Math.floor(Math.random() * 21) - 10; // -10% إلى +10%
         }

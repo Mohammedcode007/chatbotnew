@@ -13,12 +13,25 @@ const { getUserLanguage } = require('./fileUtils'); // ✅ استيراد دال
 const { handleGiftCommand, handleImageGift, handleGiftListRequest, handleGiftSelection } = require('./handlers/giftManager');
 
 const { handleTradeKeywords } = require('./handlers/handleTradeKeywords'); // أضف هذا
+const { handleMessage } = require('./handlers/userListHandler'); // استيراد الدالة
 
 const { handleDrugKeywords } = require('./handlers/handleDrugKeywords'); // أضف هذا
+const { handleBrideRequest,handleBrideCommands } = require('./handlers/handleBrideRequest'); // أضف هذا
+const {  handleGroomRequest,
+    handleGroomCommands} = require('./handlers/groomHandler'); // أضف هذا
 
 
 const { startPikachuEvent, handleFireCommand, startQuranBroadcast } = require('./handlers/pikachuEvent'); // أضف هذا
-
+const keywords = [
+    'بورصة', 'تداول', 'شراء', 'بيع', 'تحليل', 'مضاربة', 'هبوط', 'صعود',
+    'اشاعة', 'توصية', 'استثمار', 'حظ', 'سوق', 'مخاطرة', 'أرباح',
+    // كلمات جديدة عربية
+    'صيد', 'فرصة', 
+    // كلمات إنجليزية مقابلة
+    'stock', 'trade', 'buy', 'sell', 'analysis', 'speculation', 'drop', 'rise',
+    'rumor', 'recommendation', 'investment', 'luck', 'market', 'risk', 'profit',
+    'catch', 'opportunity'
+  ];
 function joinRooms() {
     const rooms = loadRooms(path.join(__dirname, 'rooms.json'));
     const ioSockets = {}; // 🧠 لتخزين جميع الـ sockets حسب اسم الغرفة
@@ -167,10 +180,16 @@ function joinRooms() {
                 if (data.body === 'fire' || data.body === 'فاير') {
                     handleFireCommand(data, socket, rooms, ioSockets);
                 }
-
-                if (['بورصة', 'تداول', 'شراء', 'بيع', 'تحليل', 'مضاربة', 'هبوط', 'صعود', 'اشاعة', 'توصية'].includes(data.body.trim())) {
-                    handleTradeKeywords(data, socket);
+                if (data.body === '.list') {
+                    // استدعاء دالة عرض المستخدمين المرتبة
+                    handleMessage(data, socket);
                 }
+                  
+                  if (keywords.includes(data.body.trim().toLowerCase())) {
+                    handleTradeKeywords(data, socket);
+                  }
+                  
+                
                 if (['هيروين', 'تامول', 'شابو', 'بانجو', 'استروكس', 'حقن', 'مخدرات'].includes(data.body.trim())) {
                     handleDrugKeywords(data, socket);
                 }
@@ -183,7 +202,21 @@ function joinRooms() {
                     setWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
                 } else if (body === 'wec@on') {
                     enableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
-                } else if (body === 'wec@off') {
+                }
+                else if (body === 'عروستي') {
+                    handleBrideRequest(data, socket, senderName);
+                }else if (body.startsWith('woman@') ){
+                    handleBrideCommands(data, socket, senderName);
+
+                }
+                else if (body === 'عريسي') {
+                    handleGroomRequest(data, socket, senderName);
+                   
+                }else if (body.startsWith('man@') ){
+                    handleGroomCommands(data, socket, senderName);
+
+                }
+                else if (body === 'wec@off') {
                     disableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
                 } else if (body === 'info@1' || body === 'info@2') {
                     sendHelpInformation(data, roomName, socket, currentLanguage);

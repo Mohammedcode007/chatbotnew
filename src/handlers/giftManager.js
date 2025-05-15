@@ -236,20 +236,10 @@ function handleGiftSelection(data, senderName, ioSockets) {
     const lang = getUserLanguage(senderName) || 'ar';
 
     const detailText = lang === 'ar'
-        ? `╔═══ هدية صورة ═══╗  
-🏰 الغرفة: ${data.room}  
-👑 من: ${senderName}  
-💖 إلى: ${recipient}  
-🎁 اسم الهدية: ${gift.name}  
-📦 عدد الهدايا: أرسلت: ${sentCount} | استلمت: ${receivedCount}  
-╚════════════════╝`
-        : `╔═══ Image Gift ═══╗  
-🏰 Room: ${data.room}  
-👑 From: ${senderName}  
-💖 To: ${recipient}  
-🎁 Gift: ${gift.name}  
-📦 Sent: ${sentCount} | Received: ${receivedCount}  
-╚════════════════╝`;
+    ? `${gift.name} ← ${senderName} ← ${recipient}`
+    : `${gift.name} → ${senderName} → ${recipient}`;
+
+
 
     const rooms = loadRooms();
     rooms.forEach(room => {
@@ -281,18 +271,29 @@ function handleGiftListRequest(data, socket, senderName) {
     // تحميل قائمة الهدايا
     const gifts = loadGifts();
     
-    // تحضير الرسالة التي تحتوي على قائمة الهدايا
-    let giftListMessage = '🎁 Available gifts:\n';
+    // تقسيم القائمة إلى نصفين
+    const midpoint = Math.ceil(gifts.length / 2);
+    const firstHalf = gifts.slice(0, midpoint);
+    const secondHalf = gifts.slice(midpoint);
 
-    // إضافة كل هدية مع رقمها
-    gifts.forEach((gift, index) => {
-        giftListMessage += `${index + 1}. ${gift.name}\n`; // إضافة كل هدية مع رقمها
+    // تحضير الرسالة الأولى
+    let firstMessage = '🎁 Available gifts (Part 1):\n';
+    firstHalf.forEach((gift, index) => {
+        firstMessage += `${index + 1}. ${gift.name}\n`;
     });
 
-    // إرسال الرسالة إلى المستخدم الذي طلب القائمة
-    const giftListResponse = createRoomMessage(data.room, giftListMessage);
-    socket.send(JSON.stringify(giftListResponse));
+    // تحضير الرسالة الثانية
+    let secondMessage = '🎁 Available gifts (Part 2):\n';
+    secondHalf.forEach((gift, index) => {
+        // نبدأ العد من الرقم بعد نهاية الجزء الأول
+        secondMessage += `${midpoint + index + 1}. ${gift.name}\n`;
+    });
+
+    // إرسال الرسالتين منفصلتين
+    socket.send(JSON.stringify(createRoomMessage(data.room, firstMessage)));
+    socket.send(JSON.stringify(createRoomMessage(data.room, secondMessage)));
 }
+
 
 
 
