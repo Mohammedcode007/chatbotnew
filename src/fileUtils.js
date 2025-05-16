@@ -363,9 +363,67 @@ function getUsersInRoom(roomName) {
   return room.users || [];
 }
 
+
+// دالة لتحديث عدد الرسائل في الغرفة عند إرسال رسالة
+function incrementRoomMessageCount(roomName) {
+  if (!roomName) return;
+
+  const rooms = loadRooms();
+  const roomIndex = rooms.findIndex(room => room.roomName === roomName);
+
+  if (roomIndex === -1) return; // الغرفة غير موجودة
+
+  // إضافة الخاصية إذا لم تكن موجودة فعلاً
+  if (!rooms[roomIndex].hasOwnProperty("messageCount")) {
+    rooms[roomIndex].messageCount = 0;
+  }
+
+  // زيادة عدد الرسائل بمقدار 1
+  rooms[roomIndex].messageCount += 1;
+
+  // حفظ التعديلات
+  saveRooms(rooms);
+}
+function getTop10RoomsByMessages() {
+  const rooms = loadRooms();
+
+  // ترتيب الغرف تنازليًا حسب messageCount، وإذا لم تكن موجودة نعتبرها 0
+  const sortedRooms = rooms
+    .map(room => ({
+      ...room,
+      messageCount: room.hasOwnProperty("messageCount") ? room.messageCount : 0
+    }))
+    .sort((a, b) => b.messageCount - a.messageCount);
+
+  // جلب أول 10 فقط
+  const top10Rooms = sortedRooms.slice(0, 10);
+
+  return top10Rooms;
+}
+function formatNumberShort(n) {
+  if (n < 1000) return n.toString();
+
+  const units = [
+    "", "k", "M", "B", "T",  // ألف - مليون - مليار - تريليون
+    "Q",   // Quadrillion
+    "Qi",  // Quintillion
+    "Sx",  // Sextillion
+    "Sp",  // Septillion
+    "Oc",  // Octillion
+    "No"   // Nonillion
+  ];
+
+  const order = Math.floor(Math.log10(n) / 3);
+  const unit = units[order] || `e${order * 3}`;
+  const num = n / Math.pow(1000, order);
+
+  return num % 1 === 0 ? `${num}${unit}` : `${num.toFixed(1)}${unit}`;
+}
+
+
 module.exports = {
-    loadRooms,getUsersInRoom, saveRooms,showAvailableGifts,loadGifts, roomExists, addRoom, saveUserLanguage, loadUserLanguage, getUserLanguage,
-    loadMasterList, saveMasterList, isUserInMasterList,getUserPoints,
+    loadRooms,getUsersInRoom,getTop10RoomsByMessages, formatNumberShort,saveRooms,showAvailableGifts,loadGifts, roomExists, addRoom, saveUserLanguage, loadUserLanguage, getUserLanguage,
+    loadMasterList, saveMasterList,incrementRoomMessageCount, isUserInMasterList,getUserPoints,
     loadAdminList, saveAdminList, isUserInAdminList,
     loadUserVerifyList, saveUserVerifyList, isUserVerified,
     loadBlockedUsers, saveBlockedUsers, isUserBlocked,

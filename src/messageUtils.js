@@ -132,6 +132,8 @@ const createRoomMessage = (roomName, body) => {
     };
 };
 const createMainImageMessage = (roomName, imageURL) => {
+    console.log(roomName, imageURL);
+    
     return {
         handler: 'room_message',
         id: 'TclBVHgBzPGTMRTNpgWV',

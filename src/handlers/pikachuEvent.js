@@ -1,6 +1,6 @@
 const { getUserLanguage, checkUserExistsOrNotify } = require('../fileUtils');
 const { addPoints, incrementPikachuKills } = require('../fileUtils');
-const { createRoomMessage } = require('../messageUtils');
+const { createRoomMessage, createMainImageMessage } = require('../messageUtils');
 
 let pikachuAlive = true;
 let currentKiller = null;
@@ -9,7 +9,7 @@ let pikachuRoom = null;
 
 const messages = {
     ar: {
-        pikachuAppeared: '⚡️ البيكاتشو ظهر! أرسل "fire@" بسرعة!',
+        pikachuAppeared: '⚡️ Pikachu is back! Send "fire or فاير" !',
         pikachuDeadReplies: [
             '⚠️ البيكاتشو مات خلاص، انت متأخر 😅',
             '🙃 للأسف، أحد سبقك وذبحه.',
@@ -21,7 +21,7 @@ const messages = {
         announcement: (sender, roomName) => `📣 ${sender} قتل البيكاتشو في غرفة [${roomName}]!`
     },
     en: {
-        pikachuAppeared: '⚡️ Pikachu appeared! Send "fire@" quickly!',
+        pikachuAppeared: '⚡️ Pikachu is back! Send "fire or فاير" !',
         pikachuDeadReplies: [
             '⚠️ Pikachu is already dead, you are late 😅',
             '🙃 Sorry, someone else already killed it.',
@@ -77,6 +77,12 @@ function startQuranBroadcast(ioSockets, rooms) {
     }, 5 * 60 * 1000); // ⏱️ كل 5 دقائق
 }
 
+const pikachuKillImages = [
+    'https://i.pinimg.com/736x/14/7d/b0/147db085b6655ea13793016b442dc4eb.jpg',
+    'https://i.pinimg.com/736x/c3/ac/22/c3ac22ef68e5aa4232953d408144837d.jpg',
+    'https://i.pinimg.com/736x/e2/30/8e/e2308e6de64d30576f32a5fbf4ce64ec.jpg',
+    'https://i.pinimg.com/736x/8f/d8/ed/8fd8ed06e9041a11cd49a26a363ea77a.jpg'
+];
 function handleFireCommand(data, socket, rooms, ioSockets) {
     const roomName = data.room;
     const sender = data.from;
@@ -111,6 +117,7 @@ function handleFireCommand(data, socket, rooms, ioSockets) {
     const personalMsg = createRoomMessage(roomName, winnerMsg);
     socket.send(JSON.stringify(personalMsg));
 
+
     // 🎉 نشر الخبر في جميع الغرف
     rooms.forEach(room => {
         const roomSocket = ioSockets[room.roomName];
@@ -119,6 +126,11 @@ function handleFireCommand(data, socket, rooms, ioSockets) {
 
         const announcement = messages[lang].announcement(sender, roomName);
         roomSocket.send(JSON.stringify(createRoomMessage(room.roomName, announcement)));
+
+        const randomImage = pikachuKillImages[Math.floor(Math.random() * pikachuKillImages.length)];
+        const imageMessage = createMainImageMessage(room.roomName, randomImage);
+        roomSocket.send(JSON.stringify(imageMessage));
+
     });
 
     console.log(`[🏆 Pikachu killed] By: ${sender} in room: ${roomName}`);
@@ -127,5 +139,5 @@ function handleFireCommand(data, socket, rooms, ioSockets) {
 
 module.exports = {
     startPikachuEvent,
-    handleFireCommand,startQuranBroadcast
+    handleFireCommand, startQuranBroadcast
 };

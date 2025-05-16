@@ -12,7 +12,6 @@ module.exports = function handleLoginCommand(body, senderUsername, mainSocket) {
 
     const parts = body.split('#');
     if (parts.length >= 4) {
-        console.log("7879878978787989");
 
         const loginUsername = parts[1];
         const loginPassword = parts.slice(2, parts.length - 1).join('#');
