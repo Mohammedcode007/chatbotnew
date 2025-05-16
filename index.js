@@ -2,6 +2,7 @@
 const WebSocket = require('ws'); // استيراد مكتبة WebSocket
 const loginToSocket = require('./src/LoginSocket');
 const {joinRooms} = require('./src/joinRooms'); // استيراد دالة joinRooms
+const {searchTrack} = require('./src/handlers/searchSoundCloud'); // استيراد دالة joinRooms
 
 loginToSocket({
     username: 'test-bott',
@@ -21,3 +22,5 @@ socket.on('open', () => {
 socket.on('error', (error) => {
     console.error('⚠️ WebSocket error:', error);
 });
+
+searchTrack('محمد منير - لما النسيم');

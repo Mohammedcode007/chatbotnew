@@ -14,11 +14,17 @@ const { handleGiftCommand, handleImageGift, handleGiftListRequest, handleGiftSel
 
 const { handleTradeKeywords } = require('./handlers/handleTradeKeywords'); // أضف هذا
 const { handleMessage } = require('./handlers/userListHandler'); // استيراد الدالة
+const { handlePlayCommand, handleSongReaction, handleSongShare } = require('./handlers/searchSoundCloud'); // استيراد الدالة
+
+const { handleShowImageCommand } = require('./handlers/imagesSearch'); // استيراد الدالة
+
+
 
 const { handleDrugKeywords } = require('./handlers/handleDrugKeywords'); // أضف هذا
-const { handleBrideRequest,handleBrideCommands } = require('./handlers/handleBrideRequest'); // أضف هذا
-const {  handleGroomRequest,
-    handleGroomCommands} = require('./handlers/groomHandler'); // أضف هذا
+const { handleBrideRequest, handleBrideCommands } = require('./handlers/handleBrideRequest'); // أضف هذا
+const { handleGroomRequest,
+    handleGroomCommands } = require('./handlers/groomHandler'); // أضف هذا
+const { handleInRoomCommand } = require('./handlers/handleInRoomCommand'); // أضف هذا
 
 
 const { startPikachuEvent, handleFireCommand, startQuranBroadcast } = require('./handlers/pikachuEvent'); // أضف هذا
@@ -26,12 +32,12 @@ const keywords = [
     'بورصة', 'تداول', 'شراء', 'بيع', 'تحليل', 'مضاربة', 'هبوط', 'صعود',
     'اشاعة', 'توصية', 'استثمار', 'حظ', 'سوق', 'مخاطرة', 'أرباح',
     // كلمات جديدة عربية
-    'صيد', 'فرصة', 
+    'صيد', 'فرصة',
     // كلمات إنجليزية مقابلة
     'stock', 'trade', 'buy', 'sell', 'analysis', 'speculation', 'drop', 'rise',
     'rumor', 'recommendation', 'investment', 'luck', 'market', 'risk', 'profit',
     'catch', 'opportunity'
-  ];
+];
 function joinRooms() {
     const rooms = loadRooms(path.join(__dirname, 'rooms.json'));
     const ioSockets = {}; // 🧠 لتخزين جميع الـ sockets حسب اسم الغرفة
@@ -79,9 +85,19 @@ function joinRooms() {
                 };
                 socket.send(JSON.stringify(joinRoomMessage));
                 console.log(`🚪 Sent join request to room: ${room.roomName}`);
+
+                const statusText = `<p style="color: #2196F3; font-family: 'Arial', sans-serif; font-size: 16px; font-weight: bold;">[Master: ${room.master}] - [Room: ${room.roomName}]</p>`;
+
+                const updateStatusMessage = {
+                    handler: 'profile_update',
+                    id: 'iQGlQEghwwsXRhvVqCND', // إذا كان هناك معرف ثابت لكل حساب يمكن تغييره
+                    type: 'status',
+                    value: statusText
+                };
+                socket.send(JSON.stringify(updateStatusMessage));
+                console.log(`💬 Status updated for ${room.username}`);
                 return;
             }
-            console.log(data, "7897987");
 
             // التعامل مع أوامر إضافية مثل addmas@
             if (data.handler === 'room_event' && data.body && data.body.startsWith('addmas@')) {
@@ -160,7 +176,7 @@ function joinRooms() {
                 let RoomName = data.room;
                 addVerifiedUser(targetUsername, socket, data.from, RoomName);
             }
-            if (data.body && (data.body.startsWith('gft@') || data.body.startsWith('svip@'))) {
+            if (data.body && (data.body.startsWith('svip@'))) {
                 handleGiftCommand(data, socket, senderName);
             } else if (data.type === 'image') {
                 handleImageGift(data, senderName, ioSockets);
@@ -168,7 +184,20 @@ function joinRooms() {
                 handleGiftListRequest(data, socket, senderName);  // دالة جديدة لإرسال قائمة الهدايا
             } else if (data.body && data.body.startsWith('gfg@')) {
                 handleGiftSelection(data, senderName, ioSockets);
+            } else if (data.body && (data.body.startsWith('play ') || data.body.startsWith('تشغيل '))) {
+                handlePlayCommand(data, socket, senderName); // ✅ الأمر الجديد لتشغيل أغنية
+            } else if (data.body && data.body.startsWith('like@')) {
+                handleSongReaction(data, 'like', socket);
+            } else if (data.body && data.body.startsWith('dislike@')) {
+                handleSongReaction(data, 'dislike', socket);
+            } else if (data.body && data.body.startsWith('com@')) {
+                handleSongReaction(data, 'comment', socket);
+            } else if (data.body && (data.body.startsWith('gift@') || data.body.startsWith('share@'))) {
+                handleSongShare(data, socket);
+            } else if (data.body && (data.body.startsWith('image ') || data.body.startsWith('صورة '))) {
+                handleShowImageCommand(data, socket, senderName); // أمر عرض صورة
             }
+
 
 
             if (data.handler === 'room_event' && data.body && data.body.startsWith('unver@')) {
@@ -184,17 +213,26 @@ function joinRooms() {
                     // استدعاء دالة عرض المستخدمين المرتبة
                     handleMessage(data, socket);
                 }
-                  
-                  if (keywords.includes(data.body.trim().toLowerCase())) {
+
+                if (keywords.includes(data.body.trim().toLowerCase())) {
                     handleTradeKeywords(data, socket);
-                  }
-                  
-                
+                }
+
+
                 if (['هيروين', 'تامول', 'شابو', 'بانجو', 'استروكس', 'حقن', 'مخدرات'].includes(data.body.trim())) {
                     handleDrugKeywords(data, socket);
                 }
 
             }
+
+           if (data.handler === 'room_event' && data.body && 
+    (data.body.startsWith('in@') || data.body === '.nx' || data.body.startsWith('fuck@'))) {
+  // نمرر رسالة المستخدم، اسم المرسل، الغرفة، ومصفوفة مداخل الـ WebSocket
+  handleInRoomCommand(data.body, data.username, data.room, ioSockets);
+}
+
+
+
             if (data.handler === 'room_event' && data.body) {
                 const body = data.body.trim();
 
@@ -205,20 +243,21 @@ function joinRooms() {
                 }
                 else if (body === 'عروستي') {
                     handleBrideRequest(data, socket, senderName);
-                }else if (body.startsWith('woman@') ){
+                } else if (body.startsWith('woman@')) {
                     handleBrideCommands(data, socket, senderName);
 
                 }
+
                 else if (body === 'عريسي') {
                     handleGroomRequest(data, socket, senderName);
-                   
-                }else if (body.startsWith('man@') ){
+
+                } else if (body.startsWith('man@')) {
                     handleGroomCommands(data, socket, senderName);
 
                 }
                 else if (body === 'wec@off') {
                     disableWelcomeMessage(data, master, senderName, roomName, rooms, currentLanguage, socket);
-                } else if (body === 'info@1' || body === 'info@2') {
+                } else if (body === 'info@1' || body === 'info@2' || body === 'info@3' || body === 'info@4' || body === 'info@5') {
                     sendHelpInformation(data, roomName, socket, currentLanguage);
                 } else if (
                     body.startsWith('o@') || body.startsWith('owner@') ||

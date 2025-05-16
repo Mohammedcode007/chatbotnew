@@ -59,6 +59,76 @@ Typing words like "trade", "sell", "buy", "up", or "down" simulates a trading ac
 ⚠️ Trading carries a risk, and you may win or lose based on luck and your current points.
             `;
         }
+    } else if (data.body.startsWith('info@3')) {
+        if (currentLanguage === 'ar') {
+            helpMessage = `
+⚙️ شرح أوامر الصلاحيات (الرتب):
+
+- o@اسم_المستخدم أو owner@اسم_المستخدم: لجعل المستخدم مالك الغرفة.
+- a@اسم_المستخدم: لجعل المستخدم مشرف.
+- m@اسم_المستخدم أو member@اسم_المستخدم: لجعل المستخدم عضو.
+- n@اسم_المستخدم أو none@اسم_المستخدم: لإزالة جميع الرتب من المستخدم.
+- b@اسم_المستخدم أو ban@اسم_المستخدم: لحظر المستخدم.
+- k@اسم_المستخدم أو kick@اسم_المستخدم: لطرد المستخدم من الغرفة.
+
+يرجى استبدال \`اسم_المستخدم\` باسم المستخدم المستهدف.
+            `;
+        } else {
+            helpMessage = `
+⚙️ Permissions (roles) commands explanation:
+
+- o@username or owner@username: Make user room owner.
+- a@username: Make user admin.
+- m@username or member@username: Make user member.
+- n@username or none@username: Remove all roles from user.
+- b@username or ban@username: Ban the user.
+- k@username or kick@username: Kick the user from the room.
+
+Please replace \`username\` with the targeted username.
+            `;
+        }
+    } else if (data.body.startsWith('info@4')) {
+        if (currentLanguage === 'ar') {
+            helpMessage = `
+🎁 أوامر الهدايا والتفاعل:
+
+- svip@اسم_المستخدم: إرسال هدية خاصة (هدية سوبر VIP) للمستخدم.
+- gfg: طلب قائمة الهدايا المتاحة.
+- gfg@رقم_الهدية: اختيار هدية معينة من القائمة وإرسالها.
+            `;
+        } else {
+            helpMessage = `
+🎁 Gift and interaction commands:
+
+- svip@username: Send a special super VIP gift to a user.
+- gfg: Request the list of available gifts.
+- gfg@gift_number: Select a specific gift from the list and send it.
+            `;
+        }
+    } else if (data.body.startsWith('info@5')) {
+        if (currentLanguage === 'ar') {
+            helpMessage = `
+🎵 أوامر تشغيل الأغاني والتفاعل معها:
+
+- play <اسم_الأغنية> أو تشغيل <اسم_الأغنية>: لتشغيل أغنية معينة.
+- like@رقم_الأغنية: للإعجاب بأغنية.
+- dislike@رقم_الأغنية: عدم الإعجاب بالأغنية.
+- com@رقم_الأغنية: لإضافة تعليق على الأغنية.
+- gift@رقم_الأغنية أو share@رقم_الأغنية: لمشاركة أو إرسال هدية مع الأغنية.
+- image <رابط_الصورة> أو صورة <رابط_الصورة>: لعرض صورة في الغرفة.
+            `;
+        } else {
+            helpMessage = `
+🎵 Music play and interaction commands:
+
+- play <song_name> or تشغيل <song_name>: To play a specific song.
+- like@song_number: Like a song.
+- dislike@song_number: Dislike a song.
+- com@song_number: Add comment to a song.
+- gift@song_number or share@song_number: Share or send gift with the song.
+- image <image_url> or صورة <image_url>: Show an image in the room.
+            `;
+        }
     }
 
     if (helpMessage) {

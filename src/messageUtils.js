@@ -69,7 +69,7 @@ const createInfoMessage = (senderUsername, lang = 'en') => {
 - لا يمكن الانضمام إلى غرفة موجودة مسبقًا بنفس الاسم.
 - سيتم حفظ اللغة المفضلة لك تلقائيًا.
 
-❓للمساعدة، يمكنك إرسال الأمر \`help\` في أي وقت.`
+❓للمساعدة، يمكنك إرسال الأمر \`info@1 to 10 in room\` في أي وقت.`
         : `ℹ️ **Usage Instructions:**
 
 1️⃣ To join a new room, send the command:
@@ -91,7 +91,7 @@ const createInfoMessage = (senderUsername, lang = 'en') => {
 - You cannot join a room that already exists with the same name.
 - Your preferred language will be saved automatically.
 
-❓For help, you can send the command \`help\` at any time.`;
+❓For help, you can send the command \`info@1 to 10 in room\` at any time.`;
 
     return {
         handler: 'chat_message',
@@ -158,9 +158,24 @@ function createGiftMessage(roomName, imageURL) {
     };
 }
 
+// ✅ دالة لبناء رسالة صوتية إلى الغرفة
+function createAudioRoomMessage(roomName, audioURL, durationInSeconds = '2') {
+    return {
+        handler: 'room_message',
+        id: 'fbycGcESSGEbMuhornbf',
+        room: roomName,
+        type: 'audio',
+        url: audioURL,
+        length: "2",
+        body: ''
+    };
+}
+
+
 module.exports = {
     createChatMessage,
     createLoginMessage,
+    createAudioRoomMessage,
     createJoinRoomMessage,
     createErrorMessage,
     createInfoMessage,

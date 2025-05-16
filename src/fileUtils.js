@@ -353,9 +353,18 @@ function showAvailableGifts(socket, room) {
     const giftListMessage = createRoomMessage(room, message);
     socket.send(JSON.stringify(giftListMessage));
 }
+// جلب مستخدمي غرفة معينة مع أدوارهم
+function getUsersInRoom(roomName) {
+  const rooms = loadRooms();
+  const room = rooms.find(r => r.roomName === roomName);
+  if (!room) {
+    return null; // الغرفة غير موجودة
+  }
+  return room.users || [];
+}
 
 module.exports = {
-    loadRooms, saveRooms,showAvailableGifts,loadGifts, roomExists, addRoom, saveUserLanguage, loadUserLanguage, getUserLanguage,
+    loadRooms,getUsersInRoom, saveRooms,showAvailableGifts,loadGifts, roomExists, addRoom, saveUserLanguage, loadUserLanguage, getUserLanguage,
     loadMasterList, saveMasterList, isUserInMasterList,getUserPoints,
     loadAdminList, saveAdminList, isUserInAdminList,
     loadUserVerifyList, saveUserVerifyList, isUserVerified,
