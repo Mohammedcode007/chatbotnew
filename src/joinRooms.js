@@ -363,7 +363,7 @@
 
 const WebSocket = require('ws');
 const path = require('path');
-const { loadRooms, saveRooms, incrementRoomMessageCount, getUserLanguage } = require('./fileUtils'); 
+const { loadRooms, saveRooms, incrementRoomMessageCount, getUserLanguage,loadUsers,saveUsers } = require('./fileUtils'); 
 const { createRoomMessage } = require('./messageUtils'); 
 const { addToList, removeFromList, blockUser, blockRoom, addVerifiedUser, removeVerifiedUser, unblockUser, unblockRoom } = require('./handlers/manageLists');
 const { disableWelcomeMessage, enableWelcomeMessage, setWelcomeMessage } = require('./handlers/handleWelocome');
@@ -372,12 +372,18 @@ const { handleUserCommands } = require('./handlers/handleUserCommands.');
 const { handleGiftCommand, handleImageGift, handleGiftListRequest, handleGiftSelection } = require('./handlers/giftManager');
 const { handleTradeKeywords } = require('./handlers/handleTradeKeywords');
 const { handleMessage } = require('./handlers/userListHandler');
-const { handlePlayCommand, handleSongReaction, handleSongShare } = require('./handlers/searchSoundCloud');
+const { handlePlayCommand, handleSongReaction, handleSongShare,handlePlaySongInAllRooms,handleImageSearchCommand ,handleImageGiftsearch} = require('./handlers/searchSoundCloud');
 const { handleShowImageCommand } = require('./handlers/imagesSearch');
 const { handleDrugKeywords } = require('./handlers/handleDrugKeywords');
 const { handleBrideRequest, handleBrideCommands } = require('./handlers/handleBrideRequest');
 const { handleGroomRequest, handleGroomCommands } = require('./handlers/groomHandler');
 const { handleInRoomCommand } = require('./handlers/handleInRoomCommand');
+const { sendUserRoomsMessage } = require('./handlers/sendUserRoomsMessage');
+const { handleNotifyCommand } = require('./handlers/handleNotifyCommand');
+
+
+
+  
 const { handleTopRoomsCommand } = require('./handlers/handleTopRoomsCommand');
 const { startPikachuEvent, handleFireCommand, startQuranBroadcast } = require('./handlers/pikachuEvent');
 
@@ -421,7 +427,29 @@ function joinRooms() {
                 let senderName = data.from;
                 let roomName = data.room || socket.roomInfo.roomName;
                 const currentLanguage = getUserLanguage(senderName) || 'en';
+console.log(data,'444444444');
 
+if (data.handler === 'room_event') {
+    const senderName = data.from;
+    const avatarUrl = data.avatar_url || `https://api.multiavatar.com/${encodeURIComponent(senderName)}.png`;
+  
+    const allUsers = loadUsers();
+    const userIndex = allUsers.findIndex(u => u.username === senderName);
+  
+    if (userIndex !== -1) {
+      // ✅ تحديث الصورة فقط إذا اختلفت عن الحالية
+      if (allUsers[userIndex].profileUrl !== avatarUrl) {
+        allUsers[userIndex].profileUrl = avatarUrl;
+        console.log(`🔄 تم تحديث صورة المستخدم "${senderName}"`);
+        saveUsers(allUsers);
+      }
+    } else {
+      // ❌ لا يتم الإضافة
+      console.log(`ℹ️ المستخدم "${senderName}" غير موجود في users.json – لم يتم التحديث.`);
+    }
+  }
+  
+  
                 // هنا استمر في التعامل مع الرسائل بنفس الطريقة الموجودة في كودك الأصلي
                 // ... (الشفرة الخاصة بالتعامل مع الرسائل مثل أوامر addmas@ و removemas@ و svip@ ... الخ)
 
@@ -533,8 +561,6 @@ function joinRooms() {
                 handleGiftListRequest(data, socket, senderName);  // دالة جديدة لإرسال قائمة الهدايا
             } else if (data.body && data.body.startsWith('gfg@')) {
                 handleGiftSelection(data, senderName, ioSockets);
-            } else if (data.body && (data.body.startsWith('play ') || data.body.startsWith('تشغيل '))) {
-                handlePlayCommand(data, socket, senderName); // ✅ الأمر الجديد لتشغيل أغنية
             } else if (data.body && data.body.startsWith('like@')) {
                 handleSongReaction(data, 'like', socket);
             } else if (data.body && data.body.startsWith('dislike@')) {
@@ -577,7 +603,7 @@ function joinRooms() {
             if (data.handler === 'room_event' && data.body &&
                 (data.body.startsWith('in@') || data.body === '.nx' || data.body.startsWith('fuck@'))) {
                 // نمرر رسالة المستخدم، اسم المرسل، الغرفة، ومصفوفة مداخل الـ WebSocket
-                handleInRoomCommand(data.body, data.username, data.room, ioSockets);
+                handleInRoomCommand(data.body, senderName, data.room, ioSockets);
             }
             if (data.body && data.body === "top@room") {
                 handleTopRoomsCommand(data, senderName, data.room, ioSockets);
@@ -586,6 +612,46 @@ function joinRooms() {
                 incrementRoomMessageCount(data.room); // زيادة عداد الرسائل
             }
 
+            // داخل معالج الرسائل
+        // داخل مستمع الرسائل (مثلاً ws.onmessage أو داخل switch حسب حالتك)
+if (data.body) {
+    const msg = data.body.trim();
+  
+    // التحقق من أمر is@
+    if (msg.startsWith("is@")) {
+      const targetUsername = msg.split("is@")[1]?.trim();
+      if (targetUsername) {
+        sendUserRoomsMessage(targetUsername, data.room, ioSockets, senderName, socket);
+      }
+    }
+    if (data.body.startsWith('.ps ')) {
+        handlePlaySongInAllRooms(data, socket, senderName, ioSockets);
+      }
+     
+if (
+    msg.startsWith('img ') ||
+    msg.startsWith('image ') ||
+    msg.startsWith('صورة ') ||
+    msg.startsWith('صوره ')
+  ) {
+    handleImageSearchCommand(data, socket, senderName);
+  }
+  if (data.body.toLowerCase().startsWith('gft@')) {
+    handleImageGiftsearch(data, socket, senderName, ioSockets);
+  }
+  
+      
+    // التحقق من أمر play أو تشغيل
+    if (msg.startsWith("play ") || msg.startsWith("تشغيل ")) {
+      handlePlayCommand(data, socket, senderName); // دالة async
+    }
+  }
+
+            if (data.body && data.body.startsWith("notify@")) {
+                handleNotifyCommand(data.body, data.room, ioSockets);
+              }
+              
+              
 
             if (data.handler === 'room_event' && data.body) {
                 const body = data.body.trim();
@@ -657,9 +723,9 @@ function joinRooms() {
 
                 saveRooms(updatedRooms);
                 console.log(`🛑 User "${usernameLeft}" removed from room "${roomName}"`);
-            } else if (data.handler === 'room_event' && data.type === 'user_joined') {
+            }
+             else if (data.handler === 'room_event' && data.type === 'user_joined') {
                 const roomName = data.name; // إضافة هذا السطر إذا كنت بحاجة إلى تعريف roomName
-                console.log(data, '789798798798');
 
                 const newUser = { username: data.username, role: data.role };
                 const targetRoom = rooms.find(room => room.roomName === roomName);
@@ -685,6 +751,8 @@ function joinRooms() {
                 }
             }
 
+         
+            
 
             } catch (error) {
                 console.error('⚠️ Error parsing message:', error);

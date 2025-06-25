@@ -148,6 +148,8 @@ const createMainImageMessage = (roomName, imageURL) => {
 // ✅ دالة لبناء رسالة هدية (مثلاً عند إرسال هدية لمستخدم أو الغرفة)
 // messageUtils.js
 function createGiftMessage(roomName, imageURL) {
+    console.log(imageURL);
+    
  
     return {
         handler: 'room_message',

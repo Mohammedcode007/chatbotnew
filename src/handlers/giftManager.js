@@ -1,7 +1,8 @@
 
-const { loadRooms, incrementUserGiftCount, loadUsers, getUserLanguage,loadGifts } = require('../fileUtils');
+const { loadRooms, incrementUserGiftCount, loadUsers, getUserLanguage,loadGifts,getUserProfileUrl } = require('../fileUtils');
 const { createGiftMessage } = require('../messageUtils');
 const { createRoomMessage } = require('../messageUtils');
+const { processImageAndUpload } = require('./processImageAndUpload'); // تأكد من مسار الدالة
 
 const pendingGifts = {}; // { senderName: { recipient, createdAt, socket } }
 const userGiftStats = {}; // { username: { sent: 0, received: 0 } } لتتبع الهدايا
@@ -199,7 +200,75 @@ function handleImageGift(data, senderName, ioSockets) {
 
 
 
-function handleGiftSelection(data, senderName, ioSockets) {
+// function handleGiftSelection(data, senderName, ioSockets) {
+//     const body = data.body;
+//     const parts = body.split('@');
+
+//     if (parts.length < 3 || parts[0] !== 'gfg') return;
+
+//     const giftId = parseInt(parts[1], 10);
+//     const recipient = parts[2].trim();
+
+//     if (isNaN(giftId)) return;
+
+//     const gifts = loadGifts();
+//     const gift = gifts.find(g => g.id === giftId);
+//     if (!gift) return;
+
+//     const users = loadUsers();
+//     const senderData = users.find(u => u.username === senderName);
+//     const recipientData = users.find(u => u.username === recipient);
+
+//     if (!recipientData) return;
+
+//     // تحديث العدادات
+//     incrementUserGiftCount(senderName, 'sentGifts');
+//     incrementUserGiftCount(senderName, 'receivedGifts');
+
+//     // إعادة تحميل العدادات بعد التحديث
+//     const updatedUsers = loadUsers();
+//     const updatedSender = updatedUsers.find(u => u.username === senderName);
+//     const updatedRecipient = updatedUsers.find(u => u.username === recipient);
+
+//     const sentCount = updatedSender?.sentGifts || 0;
+//     const receivedCount = updatedRecipient?.receivedGifts || 0;
+
+//     // تحديد اللغة
+//     const lang = getUserLanguage(senderName) || 'ar';
+
+//     const detailText = lang === 'ar'
+//     ? `${gift.name} ← ${senderName} ← ${recipient}`
+//     : `${gift.name} → ${senderName} → ${recipient}`;
+
+
+
+//     const rooms = loadRooms();
+//     rooms.forEach(room => {
+//         const roomName = room.roomName || room;
+//         const targetSocket = ioSockets[roomName];
+
+//         if (!targetSocket || targetSocket.readyState !== 1) return;
+
+//         // إرسال التفاصيل النصية
+//         const detailMsg = createRoomMessage(roomName, detailText);
+//         targetSocket.send(JSON.stringify(detailMsg));
+
+//         // إرسال صورة الهدية
+//         const giftMsg = createGiftMessage(
+//             roomName,
+//             gift.url,
+//             senderName,
+//             recipient,
+//             false,
+//             `🎁 ${senderName} أرسل هدية (${gift.name}) إلى ${recipient}!`
+//         );
+//         targetSocket.send(JSON.stringify(giftMsg));
+//     });
+// }
+
+const imgbbKey = 'f00c125d8886eadb1fa054fcfa76c040';
+
+async function handleGiftSelection(data, senderName, ioSockets) {
     const body = data.body;
     const parts = body.split('@');
 
@@ -213,56 +282,74 @@ function handleGiftSelection(data, senderName, ioSockets) {
     const gifts = loadGifts();
     const gift = gifts.find(g => g.id === giftId);
     if (!gift) return;
+    console.log(gift.url,'5545');
+    
 
     const users = loadUsers();
     const senderData = users.find(u => u.username === senderName);
     const recipientData = users.find(u => u.username === recipient);
-
     if (!recipientData) return;
 
-    // تحديث العدادات
-    incrementUserGiftCount(senderName, 'sentGifts');
-    incrementUserGiftCount(senderName, 'receivedGifts');
+    // ✅ احصل على رابط صورة البروفايل للمرسل
+    const profileUrl = getUserProfileUrl(senderName);
 
-    // إعادة تحميل العدادات بعد التحديث
-    const updatedUsers = loadUsers();
-    const updatedSender = updatedUsers.find(u => u.username === senderName);
-    const updatedRecipient = updatedUsers.find(u => u.username === recipient);
+    try {
+        const frameUrl = 'https://static.vecteezy.com/system/resources/thumbnails/023/791/894/small_2x/circle-gold-glitter-leaf-frame-wreath-design-holiday-bokeh-golden-template-png.png';
 
-    const sentCount = updatedSender?.sentGifts || 0;
-    const receivedCount = updatedRecipient?.receivedGifts || 0;
+        // ✅ عالج الصورة وارفعها وأرسلها كهديّة
+        const uploadedGiftUrl = await processImageAndUpload(profileUrl, imgbbKey,gift.url,frameUrl);
 
-    // تحديد اللغة
-    const lang = getUserLanguage(senderName) || 'ar';
+        if (!uploadedGiftUrl) {
+            console.log('❌ فشل المعالجة أو الرفع.');
+            return;
+        }
 
-    const detailText = lang === 'ar'
-    ? `${gift.name} ← ${senderName} ← ${recipient}`
-    : `${gift.name} → ${senderName} → ${recipient}`;
+        console.log('✅ Image uploaded:', uploadedGiftUrl);
 
+        // تحديث العدادات
+        incrementUserGiftCount(senderName, 'sentGifts');
+        incrementUserGiftCount(recipient, 'receivedGifts');
 
+        // إعادة تحميل العدادات بعد التحديث
+        const updatedUsers = loadUsers();
+        const updatedSender = updatedUsers.find(u => u.username === senderName);
+        const updatedRecipient = updatedUsers.find(u => u.username === recipient);
+        const sentCount = updatedSender?.sentGifts || 0;
+        const receivedCount = updatedRecipient?.receivedGifts || 0;
 
-    const rooms = loadRooms();
-    rooms.forEach(room => {
-        const roomName = room.roomName || room;
-        const targetSocket = ioSockets[roomName];
+        // تحديد اللغة
+        const lang = getUserLanguage(senderName) || 'ar';
+        const detailText = lang === 'ar'
+            ? `${gift.name} ← ${senderName} ← ${recipient}`
+            : `${gift.name} → ${senderName} → ${recipient}`;
 
-        if (!targetSocket || targetSocket.readyState !== 1) return;
+        // إرسال في كل الغرف
+        const rooms = loadRooms();
+        rooms.forEach(room => {
+            const roomName = room.roomName || room;
+            const targetSocket = ioSockets[roomName];
 
-        // إرسال التفاصيل النصية
-        const detailMsg = createRoomMessage(roomName, detailText);
-        targetSocket.send(JSON.stringify(detailMsg));
+            if (!targetSocket || targetSocket.readyState !== 1) return;
 
-        // إرسال صورة الهدية
-        const giftMsg = createGiftMessage(
-            roomName,
-            gift.url,
-            senderName,
-            recipient,
-            false,
-            `🎁 ${senderName} أرسل هدية (${gift.name}) إلى ${recipient}!`
-        );
-        targetSocket.send(JSON.stringify(giftMsg));
-    });
+            // رسالة نصية
+            const detailMsg = createRoomMessage(roomName, detailText);
+            targetSocket.send(JSON.stringify(detailMsg));
+
+            // إرسال صورة البروفايل المعدّلة كهديّة
+            const giftMsg = createGiftMessage(
+                roomName,
+                uploadedGiftUrl,
+                senderName,
+                recipient,
+                false,
+                `🎁 ${senderName} أرسل هدية خاصة إلى ${recipient}! 🌟`
+            );
+            targetSocket.send(JSON.stringify(giftMsg));
+        });
+
+    } catch (err) {
+        console.error('❌ خطأ أثناء تجهيز صورة الهدية:', err.message);
+    }
 }
 
 

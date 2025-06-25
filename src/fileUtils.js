@@ -198,6 +198,16 @@ function loadUsers() {
 function saveUsers(users) {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
 }
+function getUserProfileUrl(username) {
+    const users = loadUsers();
+    const user = users.find(u => u.username === username);
+    if (user && user.profileUrl) {
+      return user.profileUrl;
+    } else {
+      // إرجاع رابط افتراضي إذا لم يوجد المستخدم أو لم تكن له صورة
+      return `https://api.multiavatar.com/${encodeURIComponent(username)}.png`;
+    }
+  }
 function incrementUserGiftCount(username, type) {
     const users = loadUsers();
 
@@ -225,6 +235,21 @@ function addPoints(username, amount = 1000) {
     return null;
 }
 
+function getUserRooms(username) {
+    const rooms = loadRooms();
+    if (!Array.isArray(rooms)) return [];
+  
+    return rooms.flatMap(room => {
+      const foundUser = room.users?.find(u => u.username === username);
+      if (foundUser) {
+        return [{ roomName: room.roomName, role: foundUser.role }];
+      }
+      return [];
+    });
+  }
+  
+
+ 
 // زيادة عداد قتل البيكاتشو
 function incrementPikachuKills(username) {
     const users = loadUsers();
@@ -420,6 +445,19 @@ function formatNumberShort(n) {
   return num % 1 === 0 ? `${num}${unit}` : `${num.toFixed(1)}${unit}`;
 }
 
+function setNotifyOnSearch(username, value) {
+    const users = loadUsers();
+  console.log(users);
+  
+    const user = users.find(u => u.username === username);
+    if (!user) return false;
+  
+    user.notifyOnSearch = (value === 'true'); // التأكد من التحويل إلى Boolean
+  
+    saveUsers(users);
+    return true;
+  }
+  
 
 module.exports = {
     loadRooms,getUsersInRoom,getTop10RoomsByMessages, formatNumberShort,saveRooms,showAvailableGifts,loadGifts, roomExists, addRoom, saveUserLanguage, loadUserLanguage, getUserLanguage,
@@ -432,6 +470,9 @@ module.exports = {
     addPoints,
     incrementPikachuKills,checkUserExistsOrNotify,
     updateTradeHistory,   // ✅ هنا
-    getTradeStats         // ✅ وهنا
+    getTradeStats  ,
+    getUserRooms   ,
+    getUserProfileUrl,
+    setNotifyOnSearch    // ✅ وهنا
 };
 

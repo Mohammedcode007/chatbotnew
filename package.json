@@ -15,10 +15,14 @@
     "nodemon": "^3.1.10"
   },
   "dependencies": {
-    "axios": "^1.9.0",
+    "axios": "^1.10.0",
+    "canvas": "^3.1.1",
     "chalk": "^5.4.1",
     "cheerio": "^1.0.0",
     "chokidar": "^4.0.3",
-    "ws": "^8.18.2"
+    "form-data": "^4.0.3",
+    "node-fetch": "^2.7.0",
+    "ws": "^8.18.2",
+    "yt-search": "^2.13.1"
   }
 }

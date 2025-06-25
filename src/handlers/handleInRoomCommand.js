@@ -20,7 +20,11 @@ function handleInRoomCommand(message, senderName, senderRoom, ioSockets) {
     sendUserListPage(senderName, senderRoom, ioSockets);
 
   } else if (message.trim() === ".nx") {
+
+
+
     if (!sessions[sessionKey]) {
+      
       const lang = getUserLanguage(senderName) || 'ar';
       const warningText = lang === 'ar'
         ? "⚠️ يرجى إرسال الأمر `in@اسم_الغرفة` أولاً لبدء عرض قائمة المستخدمين."
@@ -47,6 +51,17 @@ function sendUserListPage(senderName, senderRoom, ioSockets) {
   const lang = getUserLanguage(senderName) || 'ar';
   const { targetRoom, page } = session;
   const usersInRoom = getUsersInRoom(targetRoom);
+  const senderSocket = ioSockets[senderRoom];
+
+  if (!Array.isArray(usersInRoom)) {
+    const errorText = lang === 'ar'
+      ? `🚫 تعذر الحصول على مستخدمي الغرفة "${targetRoom}".`
+      : `🚫 Failed to get users in room "${targetRoom}".`;
+    const errorMsg = createRoomMessage(senderRoom, errorText);
+    senderSocket.send(JSON.stringify(errorMsg));
+    delete sessions[sessionKey];
+    return;
+  }
 
   const pageSize = 10;
   const startIndex = (page - 1) * pageSize;
@@ -54,7 +69,6 @@ function sendUserListPage(senderName, senderRoom, ioSockets) {
 
   const usersPage = usersInRoom.slice(startIndex, endIndex);
 
-  const senderSocket = ioSockets[senderRoom];
   if (!senderSocket || senderSocket.readyState !== 1) return;
 
   if (usersPage.length === 0) {

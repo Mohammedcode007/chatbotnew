@@ -2,36 +2,14 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { loadRooms, incrementUserGiftCount, loadUsers, getUserLanguage, loadGifts } = require('../fileUtils');
-const { createRoomMessage, createAudioRoomMessage, createChatMessage } = require('../messageUtils');
-
+const { createRoomMessage, createAudioRoomMessage, createChatMessage,createMainImageMessage,createGiftMessage } = require('../messageUtils');
+const ytSearch = require('yt-search');
 // تخزين الأغاني النشطة: معرف صغير => بيانات الأغنية
 const activeSongs = {};
 
-// دالة للحصول على client_id من صفحة SoundCloud
-async function getClientId() {
-  try {
-    const { data: html } = await axios.get('https://soundcloud.com');
-    const $ = cheerio.load(html);
-    const scriptUrls = [];
 
-    $('script').each((i, el) => {
-      const src = $(el).attr('src');
-      if (src && src.includes('sndcdn')) scriptUrls.push(src);
-    });
 
-    for (const url of scriptUrls) {
-      const { data: jsFile } = await axios.get(url);
-      const match = jsFile.match(/client_id\s*:\s*"([a-zA-Z0-9-_]+)"/);
-      if (match) return match[1];
-    }
-
-    throw new Error('لم يتم العثور على client_id');
-  } catch (error) {
-    console.error('❌ فشل استخراج client_id:', error.message);
-  }
-}
-
-// دالة توليد معرف قصير عشوائي للأغنية (6 أحرف أرقام وحروف)
+// // دالة توليد معرف قصير عشوائي للأغنية (6 أحرف أرقام وحروف)
 function generateShortId(length = 6) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let id = '';
@@ -41,24 +19,203 @@ function generateShortId(length = 6) {
   return id;
 }
 
-// دالة البحث عن الأغاني باستخدام client_id
-async function searchTrack(query) {
-  const client_id = await getClientId();
-  if (!client_id) return [];
 
+
+
+async function searchSongMp3(songName) {
   try {
-    const response = await axios.get('https://api-v2.soundcloud.com/search/tracks', {
-      params: { q: query, client_id, limit: 1 },
-    });
-    return response.data.collection;
-  } catch (error) {
-    console.error('❌ خطأ أثناء البحث:', error.message);
-    return [];
+    const result = await ytSearch(songName);
+    const video = result.videos.length > 0 ? result.videos[0] : null;
+
+    if (!video) return null;
+
+    const options = {
+      method: 'GET',
+      url: 'https://youtube-mp36.p.rapidapi.com/dl',
+      params: { id: video.videoId },
+      headers: {
+        'X-RapidAPI-Key': '9d77c1692dmshb2fe1e825ee4aaap11d28cjsn87a78b77c8ac', // 🔐 استبدل بمفتاحك الحقيقي
+        'X-RapidAPI-Host': 'youtube-mp36.p.rapidapi.com',
+      },
+    };
+
+    const response = await axios.request(options);
+
+    if (!response.data.link) return null;
+
+    return {
+      title: video.title,
+      ytUrl: video.url,
+      mp3Url: response.data.link,
+      thumb: video.thumbnail || video.image // ✅ الصورة المصغرة
+
+    };
+  } catch (err) {
+    console.error('YT Search or Download Error:', err.message);
+    return null;
   }
 }
 
-// دالة تنفيذ أمر تشغيل الأغنية
+
+
+
+// async function handleImageSearchCommand(data, socket, senderName) {
+//   const body = data.body.trim().toLowerCase();
+
+//   // التحقق من كون الرسالة تبدأ بـ .img أو img أو صوره أو صورة
+//   if (
+//     !body.startsWith('.img ') &&
+//     !body.startsWith('img ') &&
+//     !body.startsWith('صوره ') &&
+//     !body.startsWith('صورة ')
+//   ) return;
+
+//   // استخراج الكلمة المفتاحية
+//   const keyword = body.split(' ').slice(1).join(' ').trim();
+//   if (!keyword) return;
+
+//   try {
+//     const response = await axios.get('https://api.unsplash.com/search/photos', {
+//       params: { query: keyword, per_page: 1 },
+//       headers: {
+//         Authorization: 'Client-ID aq-u8R0fgFn-me82Trf1GgwyTP2vdtJmIsB8VBDXIzc'
+//       }
+//     });
+
+//     const images = response.data.results;
+//     if (!images || images.length === 0) return;
+
+//     const imageUrl = images[0].urls.regular;
+//     const imageMessage = createMainImageMessage(data.room, imageUrl);
+
+//     // إرسال الصورة فقط دون أي وصف أو تأكيد
+//     socket.send(JSON.stringify(imageMessage));
+    
+//   } catch (error) {
+//     console.error('Unsplash search error:', error.message);
+//   }
+// }
+
+
+const activeImages = {}; // تخزين الصور حسب معرف فريد مشابه للأغاني
+
+function generateShortId(length = 6) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  for (let i = 0; i < length; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
+}
+
+async function handleImageSearchCommand(data, socket, senderName) {
+  const body = data.body.trim().toLowerCase();
+
+  if (
+    !body.startsWith('.img ') &&
+    !body.startsWith('img ') &&
+    !body.startsWith('صوره ') &&
+    !body.startsWith('صورة ')
+  ) return;
+
+  const keyword = body.split(' ').slice(1).join(' ').trim();
+  if (!keyword) return;
+
+  try {
+    const response = await axios.get('https://api.unsplash.com/search/photos', {
+      params: { query: keyword, per_page: 1 },
+      headers: {
+        Authorization: 'Client-ID aq-u8R0fgFn-me82Trf1GgwyTP2vdtJmIsB8VBDXIzc'
+      }
+    });
+
+    const images = response.data.results;
+    if (!images || images.length === 0) return;
+
+    const imageUrl = images[0].urls.regular;
+    const imageId = generateShortId();
+
+    // تخزين بيانات الصورة
+    activeImages[imageId] = {
+      id: imageId,
+      url: imageUrl,
+      sender: senderName,
+      room: data.room,
+      keyword,
+    };
+
+    // إرسال الصورة فقط دون وصف
+    const imageMessage = createMainImageMessage(data.room, imageUrl);
+    socket.send(JSON.stringify(imageMessage));
+
+    // إرسال رسالة اختيارية تحفز على الإهداء
+    const note = `🎁 To gift this image, type: gft@${imageId}@username`;
+    socket.send(JSON.stringify(createRoomMessage(data.room, note)));
+
+  } catch (error) {
+    console.error('Unsplash search error:', error.message);
+  }
+}
+
+function handleImageGiftsearch(data, socket, senderName, ioSockets) {
+  const body = data.body.trim();
+  if (!body.toLowerCase().startsWith('gft@')) return;
+
+  const parts = body.split('@');
+  if (parts.length < 3) return;
+
+  const imageId = parts[1].trim();
+  const targetUser = parts[2].trim();
+
+  const imageData = activeImages[imageId];
+  if (!imageData) {
+    socket.send(JSON.stringify(createRoomMessage(data.room, `❗ Image not found.`)));
+    return;
+  }
+
+  const lang = getUserLanguage(senderName) || 'ar';
+  const imageUrl = imageData.url;
+  const imageMsg = createMainImageMessage(targetUser, imageUrl);
+  const allRooms = loadRooms();
+
+  // رسالة البث الموحدة
+  const broadcastText =
+    lang === 'ar'
+      ? `🎁 هدية بصرية جميلة من ${senderName} إلى ${targetUser}! 📸`
+      : `🎁 A beautiful visual gift from ${senderName} to ${targetUser}! 📸`;
+
+  for (const room of allRooms) {
+    const roomSocket = ioSockets[room.roomName];
+    if (roomSocket && roomSocket.readyState === 1) {
+      // إرسال الرسالة النصية في كل غرفة
+      roomSocket.send(JSON.stringify(
+        createRoomMessage(room.roomName, broadcastText)
+      ));
+
+      // إرسال الصورة في كل غرفة
+      roomSocket.send(JSON.stringify(
+        createMainImageMessage(room.roomName, imageUrl)
+      ));
+    }
+  }
+
+  // إرسال الصورة للمستخدم المستهدف بشكل خاص
+  if (ioSockets[targetUser] && ioSockets[targetUser].readyState === 1) {
+    ioSockets[targetUser].send(JSON.stringify(imageMsg));
+  }
+
+  // تأكيد للمرسل
+  const confirmText =
+    lang === 'ar'
+      ? `✅ تم إرسال الصورة كهدية إلى ${targetUser}`
+      : `✅ The image was gifted to ${targetUser}`;
+  socket.send(JSON.stringify(createChatMessage(senderName, confirmText)));
+}
+
+
+
 async function handlePlayCommand(data, socket, senderName) {
+  
   const body = data.body.trim();
   if (!body.startsWith('play ') && !body.startsWith('تشغيل ')) return;
 
@@ -67,15 +224,14 @@ async function handlePlayCommand(data, socket, senderName) {
 
   const lang = getUserLanguage(senderName) || 'ar';
 
-  // إرسال رسالة جارٍ تحميل طلبك مع تصميم شرح واضح
   const loadingMsg = lang === 'ar'
     ? '⏳ جارٍ تحميل طلبك... يرجى الانتظار قليلاً'
     : '⏳ Loading your request... please wait a moment';
   socket.send(JSON.stringify(createRoomMessage(data.room, loadingMsg)));
 
   try {
-    const results = await searchTrack(songName);
-    if (!results || results.length === 0) {
+    const song = await searchSongMp3(songName);
+    if (!song) {
       const msg = lang === 'ar'
         ? `❗ لم يتم العثور على أي أغنية بعنوان: "${songName}"`
         : `❗ No track found for: "${songName}"`;
@@ -83,75 +239,41 @@ async function handlePlayCommand(data, socket, senderName) {
       return;
     }
 
-    const track = results[0];
-    const progressiveTranscoding = track.media.transcodings.find(m => m.format.protocol === 'progressive');
-    if (!progressiveTranscoding) {
-      const msg = lang === 'ar'
-        ? `❗ لا يوجد رابط مباشر للأغنية "${track.title}"`
-        : `❗ No direct audio link for "${track.title}"`;
-      socket.send(JSON.stringify(createRoomMessage(data.room, msg)));
-      return;
-    }
-
-    const client_id = await getClientId();
-    const transcodeUrl = `${progressiveTranscoding.url}?client_id=${client_id}`;
-    const { data: transcodeData } = await axios.get(transcodeUrl);
-    const directAudioUrl = transcodeData.url;
-
     // توليد معرف قصير فريد للأغنية
     let songId;
     do {
       songId = generateShortId();
-    } while (activeSongs[songId]); // التأكد من عدم التكرار
+    } while (activeSongs[songId]);
 
-    // تخزين بيانات الأغنية النشطة
     activeSongs[songId] = {
       id: songId,
-      title: track.title,
-      url: directAudioUrl,
-      duration: Math.ceil(track.duration / 1000),
+      title: song.title,
+      url: song.mp3Url,
       sender: senderName,
       room: data.room
     };
 
-    // إرسال رسالة صوتية مع الرابط المباشر
-    socket.send(JSON.stringify(createAudioRoomMessage(data.room, directAudioUrl, Math.ceil(track.duration / 1000))));
+    // إرسال الأغنية كرابط صوتي
+    socket.send(JSON.stringify(createAudioRoomMessage(data.room, song.mp3Url)));
 
-    // رسالة نصية توضيحية مع أوامر التفاعل المختصرة
-  const text = lang === 'ar'
-  ? 
-`🎵 ${senderName} طلب تشغيل الأغنية: "${track.title}"
+    const text = lang === 'ar'
+    ? `🎵 "${song.title}" (طلب: ${senderName})\nID: ${songId}
+  
+  ❤️ like@${songId}
+  👎 dislike@${songId}
+  💬 com@${songId}@username@تعليق
+  🎁 gift@${songId}@username
+  📤 sh@${songId}@username`
+    : `🎵 "${song.title}" (by ${senderName})\nID: ${songId}
+  
+  ❤️ like@${songId}
+  👎 dislike@${songId}
+  💬 com@${songId}@comment
+  🎁 gift@${songId}@username
+  📤 share@${songId}@username`;
+  
 
-(المعرف: ${songId})
-
-يمكنك التفاعل مع الأغنية باستخدام الأوامر التالية:
-
-❤️ إعجاب: like@${songId}
-
-👎 عدم إعجاب: dislike@${songId}
-
-💬 تعليق: com@${songId}@username نص_تعليقك
-
-🎁 إرسال هدية: gift@${songId}@username إلى اسم_المستخدم
-
-📤 مشاركة الأغنية: sh@${songId}@اسم_المستخدم`
-  :
-`🎵 ${senderName} requested the track: "${track.title}"
-
-(ID: ${songId})
-
-You can interact with the track using the following commands:
-
-❤️ Like: like@${songId}
-
-👎 Dislike: dislike@${songId}
-
-💬 Comment: com@${songId}@username your comment
-
-🎁 Send gift: gift@${songId}@username to username
-
-📤 Share the track: sh@${songId}@username`;
- socket.send(JSON.stringify(createRoomMessage(data.room, text)));
+    socket.send(JSON.stringify(createRoomMessage(data.room, text)));
 
   } catch (error) {
     const msg = lang === 'ar'
@@ -161,7 +283,6 @@ You can interact with the track using the following commands:
     console.error(error);
   }
 }
-
 
 // دالة التعامل مع التفاعلات على الأغاني: like@id, dislike@id, comment@id نص
 function handleSongReaction(data, actionType, socket) {
@@ -200,6 +321,7 @@ function handleSongReaction(data, actionType, socket) {
 
 // دالة التعامل مع المشاركة (sh@id@username) والهدايا (gift@id@username)
 function handleSongShare(data, socket) {
+  
   const sender = data.from;
   const lang = getUserLanguage(sender) || 'ar';
   const body = data.body.trim();
@@ -244,12 +366,182 @@ function handleSongShare(data, socket) {
   socket.send(JSON.stringify(createChatMessage(sender, confirmText)));
 }
 
+// async function handlePlaySongInAllRooms(data, socket, senderName, ioSockets) {
+//   const body = data.body.trim();
+//   if (!body.startsWith('.ps ')) return;
+
+//   const songName = body.slice(4).trim();
+//   if (!songName) return;
+
+//   const lang = getUserLanguage(senderName) || 'ar';
+
+//   const loadingMsg = lang === 'ar'
+//     ? '📡 جارٍ إرسال الأغنية لجميع الغرف...'
+//     : '📡 Sending the song to all rooms...';
+//   socket.send(JSON.stringify(createRoomMessage(data.room, loadingMsg)));
+
+//   try {
+//     const song = await searchSongMp3(songName);
+//     if (!song) {
+//       const notFoundMsg = lang === 'ar'
+//         ? `❗ لم يتم العثور على أغنية بعنوان "${songName}"`
+//         : `❗ No song found for "${songName}"`;
+//       socket.send(JSON.stringify(createRoomMessage(data.room, notFoundMsg)));
+//       return;
+//     }
+
+//     // توليد معرف فريد
+//     let songId;
+//     do {
+//       songId = generateShortId();
+//     } while (activeSongs[songId]);
+
+//     // حفظ بيانات الأغنية
+//     activeSongs[songId] = {
+//       id: songId,
+//       title: song.title,
+//       url: song.mp3Url,
+//       sender: senderName,
+//     };
+
+//     const audioMsg = createAudioRoomMessage('', song.mp3Url);
+//     const textMsg = createRoomMessage('', `🎶 "${song.title}"\n❤️ like@${songId} | 💬 com@${songId}@username@تعليق`);
+
+//     const allRooms = loadRooms(); // تأكد أن الدالة لا تحتاج مسار
+
+//     for (const room of allRooms) {
+//       const roomName = room.roomName;
+//       const roomSocket = ioSockets[roomName];
+
+//       if (roomSocket && roomSocket.readyState === 1) {
+//         audioMsg.room = roomName;
+//         textMsg.room = roomName;
+
+//         roomSocket.send(JSON.stringify(audioMsg));
+//         roomSocket.send(JSON.stringify(textMsg));
+//       }
+//     }
+
+//     const confirmMsg = lang === 'ar'
+//       ? `✅ تم إرسال الأغنية "${song.title}" إلى جميع الغرف.`
+//       : `✅ The song "${song.title}" was sent to all rooms.`;
+//     socket.send(JSON.stringify(createRoomMessage(data.room, confirmMsg)));
+
+//   } catch (error) {
+//     const errMsg = lang === 'ar'
+//       ? `❌ حدث خطأ أثناء إرسال الأغنية.`
+//       : `❌ Error occurred while sending the song.`;
+//     socket.send(JSON.stringify(createRoomMessage(data.room, errMsg)));
+//     console.error(error);
+//   }
+// }
+
+
+async function handlePlaySongInAllRooms(data, socket, senderName, ioSockets) {
+  const body = data.body.trim();
+  if (!body.startsWith('.ps ')) return;
+
+  const songName = body.slice(4).trim();
+  if (!songName) return;
+
+  const lang = getUserLanguage(senderName) || 'ar';
+
+  const loadingMsg = lang === 'ar'
+    ? '📡 جارٍ إرسال الأغنية إلى جميع الغرف...'
+    : '📡 Sending the song to all rooms...';
+  socket.send(JSON.stringify(createRoomMessage(data.room, loadingMsg)));
+
+  try {
+    const song = await searchSongMp3(songName);
+    if (!song) {
+      const notFoundMsg = lang === 'ar'
+        ? `❗ لم يتم العثور على أغنية بعنوان "${songName}"`
+        : `❗ No song found for "${songName}"`;
+      socket.send(JSON.stringify(createRoomMessage(data.room, notFoundMsg)));
+      return;
+    }
+
+    console.log(song,'song');
+
+    // توليد معرف فريد للأغنية
+    let songId;
+    do {
+      songId = generateShortId();
+      
+    } while (activeSongs[songId]);
+
+    activeSongs[songId] = {
+      id: songId,
+      title: song.title,
+      url: song.mp3Url,
+      sender: senderName,
+    };
+
+    // تحضير الرسائل
+    const audioMsg = createAudioRoomMessage('', song.mp3Url);
+
+    const textMsg = createRoomMessage(
+      '',
+      `📻 Live Radio Broadcast 🎙️
+    
+    🎵 Now Playing: "${song.title}"
+    👤 Requested by: ${senderName}
+    🆔 Track ID: ${songId}
+    
+    💬 Interact:
+    ❤️ like@${songId}
+    ❤️ dislike@${songId}
+
+    💬 com@${songId}@your comment`
+    );
+    
+
+    const allRooms = loadRooms();
+
+    for (const room of allRooms) {
+      const roomName = room.roomName;
+      const roomSocket = ioSockets[roomName];
+
+      if (roomSocket && roomSocket.readyState === 1) {
+        // تحديد الغرفة لكل رسالة
+        audioMsg.room = roomName;
+        textMsg.room = roomName;
+
+        // إرسال الصورة الرئيسية إن وجدت
+        if (song.thumb) {
+          const imageMsg = createMainImageMessage(roomName, song.thumb);
+          roomSocket.send(JSON.stringify(imageMsg));
+        }
+
+        // إرسال الصوت والنص
+        roomSocket.send(JSON.stringify(audioMsg));
+        roomSocket.send(JSON.stringify(textMsg));
+      }
+    }
+
+    const confirmMsg = lang === 'ar'
+      ? `✅ تم إرسال "${song.title}" إلى جميع الغرف بنجاح.`
+      : `✅ "${song.title}" was broadcast to all rooms successfully.`;
+    socket.send(JSON.stringify(createRoomMessage(data.room, confirmMsg)));
+
+  } catch (error) {
+    const errMsg = lang === 'ar'
+      ? `❌ حدث خطأ أثناء إرسال الأغنية.`
+      : `❌ Error occurred while broadcasting the song.`;
+    socket.send(JSON.stringify(createRoomMessage(data.room, errMsg)));
+    console.error(error);
+  }
+}
+
 // التصدير
 module.exports = {
-  searchTrack,
-  getClientId,
+  // searchTrack,
+  // getClientId,
   handlePlayCommand,
   handleSongReaction,
   handleSongShare,
-  activeSongs
+  handlePlaySongInAllRooms,
+  handleImageSearchCommand,
+  activeSongs,
+  handleImageGiftsearch
 };

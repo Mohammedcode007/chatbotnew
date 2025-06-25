@@ -14,14 +14,16 @@
   {
     "username": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
     "vip": true,
-    "points": 20234,
+    "points": 20436,
     "pikachuKills": 26,
     "trades": {
-      "win": 13,
+      "win": 14,
       "lose": 23
     },
-    "sentGifts": 45,
-    "receivedGifts": 23
+    "sentGifts": 62,
+    "receivedGifts": 40,
+    "notifyOnSearch": false,
+    "profileUrl": "https://cdn.chatp.net/p/565485655288/t099641906647324.png"
   },
   {
     "username": "._.banda._.",
@@ -32,5 +34,12 @@
     "username": "❥͜͡🤴ملـ«الـِِـِِۧغمــِِۧـِِوض»ــگ♪",
     "vip": false,
     "points": 10
+  },
+  {
+    "profileUrl": "https://api.multiavatar.com/undefined.png"
+  },
+  {
+    "username": ".sokkar.",
+    "profileUrl": "https://cdn.chatp.net/p/345738138657/t995486237054082.png"
   }
 ]
