@@ -128,7 +128,7 @@ const createRoomMessage = (roomName, body) => {
         type: 'text',
         body,
         url: '',
-        length: ''
+        length: '',
     };
 };
 const createMainImageMessage = (roomName, imageURL) => {

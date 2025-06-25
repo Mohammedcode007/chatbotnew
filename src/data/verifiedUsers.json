@@ -14,14 +14,14 @@
   {
     "username": "ا◙☬ځُــۥـ☼ـڈ◄أڵـــســمـــٱ۽►ـۉد☼ــۥــۓ☬◙ا",
     "vip": true,
-    "points": 20436,
+    "points": 4062,
     "pikachuKills": 26,
     "trades": {
-      "win": 14,
-      "lose": 23
+      "win": 15,
+      "lose": 28
     },
-    "sentGifts": 62,
-    "receivedGifts": 40,
+    "sentGifts": 98,
+    "receivedGifts": 51,
     "notifyOnSearch": false,
     "profileUrl": "https://cdn.chatp.net/p/565485655288/t099641906647324.png"
   },
@@ -41,5 +41,13 @@
   {
     "username": ".sokkar.",
     "profileUrl": "https://cdn.chatp.net/p/345738138657/t995486237054082.png"
+  },
+  {
+    "username": "smouha",
+    "vip": false,
+    "points": 10,
+    "sentGifts": 1,
+    "receivedGifts": 26,
+    "profileUrl": "https://cdn.chatp.net/p/757817870015/t358529738934835.png"
   }
 ]

@@ -69,41 +69,45 @@ async function processImageAndUpload(imageUrl, imgbbApiKey, overlayImageUrl, fra
     const baseBuffer = await baseResponse.buffer();
     const baseImage = await loadImage(baseBuffer);
 
-    // إنشاء Canvas رئيسي
-    const canvas = createCanvas(baseImage.width, baseImage.height);
+    const scale = 3; // ⬅️ دقة أعلى
+    const canvas = createCanvas(baseImage.width * scale, baseImage.height * scale);
     const ctx = canvas.getContext('2d');
 
-    // ✅ إنشاء طبقة مؤقتة لخلفية باهتة فقط
-    const backgroundCanvas = createCanvas(baseImage.width, baseImage.height);
-    const backgroundCtx = backgroundCanvas.getContext('2d');
+    // تحسين الجودة
+    ctx.patternQuality = 'best';
+    ctx.filter = 'high';
+    ctx.quality = 'best';
 
-    backgroundCtx.globalAlpha = 0.5; // شفافية الخلفية فقط
-    backgroundCtx.drawImage(baseImage, 0, 0);
+    ctx.scale(scale, scale);
 
-    // رسم الخلفية الباهتة في الـ canvas الرئيسي
-    ctx.drawImage(backgroundCanvas, 0, 0);
+    // ✅ رسم الخلفية
+    ctx.drawImage(baseImage, 0, 0, baseImage.width, baseImage.height);
 
-    // تحميل صورة التراكب
+    // ✅ إضافة طبقة شفافة (يمكنك حذفها)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fillRect(0, 0, baseImage.width, baseImage.height);
+
+    // 🎯 تحميل التراكب
     const overlayResponse = await fetch(overlayImageUrl);
     const overlayBuffer = await overlayResponse.buffer();
     const overlayImage = await loadImage(overlayBuffer);
 
-    // أبعاد التراكب
-    const overlayWidth = baseImage.width / 3;
+    const maxOverlayWidth = baseImage.width / 2.5;
+    const overlayWidth = Math.min(overlayImage.width, maxOverlayWidth);
     const overlayHeight = (overlayImage.height / overlayImage.width) * overlayWidth;
+
     const x = (baseImage.width - overlayWidth) / 2;
     const y = (baseImage.height - overlayHeight) / 2;
 
-    // ✅ رسم التراكب في المنتصف بدون شفافية
     ctx.drawImage(overlayImage, x, y, overlayWidth, overlayHeight);
 
-    // تحميل الإطار
+    // 🖼️ تحميل وإضافة الإطار
     if (frameImageUrl) {
       const frameResponse = await fetch(frameImageUrl);
       const frameBuffer = await frameResponse.buffer();
       const frameImage = await loadImage(frameBuffer);
 
-      const framePadding = overlayWidth * 0.1;
+      const framePadding = overlayWidth * 0.5;
       const frameX = x - framePadding;
       const frameY = y - framePadding;
       const frameW = overlayWidth + framePadding * 2;
@@ -112,12 +116,12 @@ async function processImageAndUpload(imageUrl, imgbbApiKey, overlayImageUrl, fra
       ctx.drawImage(frameImage, frameX, frameY, frameW, frameH);
     }
 
-    // حفظ الصورة مؤقتًا
+    // ✅ حفظ الصورة مؤقتًا
     const tempPath = path.join(__dirname, 'temp_image.png');
     const outBuffer = canvas.toBuffer('image/png');
     fs.writeFileSync(tempPath, outBuffer);
 
-    // رفع إلى imgbb
+    // ✅ رفع إلى imgbb
     const form = new FormData();
     form.append('image', fs.readFileSync(tempPath).toString('base64'));
 
@@ -128,7 +132,10 @@ async function processImageAndUpload(imageUrl, imgbbApiKey, overlayImageUrl, fra
     );
 
     fs.unlinkSync(tempPath);
-    return uploadRes.data.data.url;
+
+    const imageLink = uploadRes.data.data.url;
+    console.log('✅ Uploaded Image:', imageLink);
+    return imageLink;
 
   } catch (err) {
     console.error('❌ Error in image processing or upload:', err.message);
@@ -139,5 +146,3 @@ async function processImageAndUpload(imageUrl, imgbbApiKey, overlayImageUrl, fra
 module.exports = {
   processImageAndUpload
 };
-
-

@@ -282,7 +282,7 @@ async function handleGiftSelection(data, senderName, ioSockets) {
     const gifts = loadGifts();
     const gift = gifts.find(g => g.id === giftId);
     if (!gift) return;
-    console.log(gift.url,'5545');
+    console.log(gift,'5545');
     
 
     const users = loadUsers();
@@ -294,7 +294,7 @@ async function handleGiftSelection(data, senderName, ioSockets) {
     const profileUrl = getUserProfileUrl(senderName);
 
     try {
-        const frameUrl = 'https://static.vecteezy.com/system/resources/thumbnails/023/791/894/small_2x/circle-gold-glitter-leaf-frame-wreath-design-holiday-bokeh-golden-template-png.png';
+        const frameUrl = 'https://png.pngtree.com/png-clipart/20230504/original/pngtree-warp-circle-neon-border-blue-pink-png-image_9140993.png';
 
         // ✅ عالج الصورة وارفعها وأرسلها كهديّة
         const uploadedGiftUrl = await processImageAndUpload(profileUrl, imgbbKey,gift.url,frameUrl);
@@ -351,6 +351,7 @@ async function handleGiftSelection(data, senderName, ioSockets) {
         console.error('❌ خطأ أثناء تجهيز صورة الهدية:', err.message);
     }
 }
+
 
 
 
